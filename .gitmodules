@@ -1,0 +1,9 @@
+[submodule "/home/marcelo/war/lib/war_AI"]
+	path = /home/marcelo/war/lib/war_AI
+	url = git@github.com:Marcelomm103/war_AI.git
+[submodule "/home/marcelo/war/lib/war_game_engine"]
+	path = /home/marcelo/war/lib/war_game_engine
+	url = git@github.com:Marcelomm103/war_game_engine.git
+[submodule "/home/marcelo/war/lib/war_analyzer"]
+	path = /home/marcelo/war/lib/war_analyzer
+	url = git@github.com:Marcelomm103/war_analyzer.git

@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "game_profile": "WAR 1 clássico",
+  "status": "user_corrected_reciprocity_verified",
+  "certified": true,
+  "certification_scope": "Lista de adjacências corrigida pelo usuário; cobertura dos 42 IDs, referências válidas, ausência de duplicatas/auto-arestas e reciprocidade verificadas. Não é uma auditoria visual independente das fronteiras do tabuleiro.",
+  "source": {
+    "adjacency_table": "war_adjacency_review_v1.0.md",
+    "territory_catalog": "war_board_spec_v1.0.md",
+    "map_asset": "images/mapa_war_classico.webp",
+    "map_sha256": "6877a96fa88616202eb9448e494ccb82f9c2dc2edf207daf2c33cfe6584548b8"
+  },
+  "adjacency": {
+    "T01": ["T02", "T03", "T04"],
+    "T02": ["T01", "T04"],
+    "T03": ["T01", "T20"],
+    "T04": ["T01", "T02", "T23"],
+    "T05": ["T09", "T10", "T40"],
+    "T06": ["T10", "T11", "T32"],
+    "T07": ["T08", "T11", "T12", "T13"],
+    "T08": ["T07", "T09", "T12", "T13"],
+    "T09": ["T05", "T08", "T10", "T13"],
+    "T10": ["T05", "T06", "T09", "T13"],
+    "T11": ["T06", "T07", "T13"],
+    "T12": ["T07", "T08", "T27"],
+    "T13": ["T07", "T08", "T09", "T10", "T11"],
+    "T14": ["T16", "T17", "T19"],
+    "T15": ["T18", "T19", "T29", "T33", "T39"],
+    "T16": ["T14", "T18", "T19"],
+    "T17": ["T14", "T19"],
+    "T18": ["T15", "T16", "T19", "T26", "T29"],
+    "T19": ["T14", "T15", "T16", "T17", "T18"],
+    "T20": ["T03", "T23", "T35", "T39", "T41"],
+    "T21": ["T22", "T36", "T40"],
+    "T22": ["T21", "T35", "T36", "T37", "T40"],
+    "T23": ["T04", "T20", "T35"],
+    "T24": ["T35", "T40"],
+    "T25": ["T26", "T42"],
+    "T26": ["T18", "T25", "T27", "T42"],
+    "T27": ["T12", "T26", "T42"],
+    "T28": ["T29", "T30", "T33"],
+    "T29": ["T15", "T18", "T28", "T30", "T33"],
+    "T30": ["T28", "T29", "T31", "T32"],
+    "T31": ["T30", "T34"],
+    "T32": ["T06", "T30"],
+    "T33": ["T15", "T28", "T29", "T34", "T39"],
+    "T34": ["T31", "T33", "T38", "T39", "T41"],
+    "T35": ["T20", "T22", "T23", "T24", "T37", "T38", "T40", "T41"],
+    "T36": ["T21", "T22", "T37", "T38"],
+    "T37": ["T22", "T35", "T36", "T38"],
+    "T38": ["T34", "T35", "T36", "T37", "T41"],
+    "T39": ["T15", "T20", "T33", "T34", "T41"],
+    "T40": ["T05", "T21", "T22", "T24", "T35"],
+    "T41": ["T20", "T34", "T35", "T38", "T39"],
+    "T42": ["T25", "T26", "T27"]
+  },
+  "validation": {
+    "reciprocal_consistency": "passed",
+    "territory_rows": 42,
+    "directed_neighbor_declarations": 158,
+    "undirected_pairs": 79,
+    "unknown_ids": 0,
+    "duplicate_neighbors": 0,
+    "self_loops": 0,
+    "isolated_territories": 0,
+    "connected_components": 1,
+    "user_corrections_applied": [
+      {
+        "action": "remove_undirected_pair",
+        "pair": ["T21", "T37"],
+        "reason": "The user corrected that T21–T37 is not an adjacency."
+      },
+      {
+        "action": "retain_undirected_pair",
+        "pair": ["T36", "T37"],
+        "reason": "The user confirmed that T36–T37 is an adjacency."
+      }
+    ],
+    "independent_visual_audit": false
+  },
+  "superseded_previous_draft": {
+    "former_inferred_edge_count": 82,
+    "former_open_alternatives": 11,
+    "active": false,
+    "note": "The former assistant-generated edge candidates and confidence ratings were replaced by the user-corrected adjacency table."
+  }
+}

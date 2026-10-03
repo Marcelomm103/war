@@ -2,7 +2,7 @@
 
 A recomendação é desenvolver **um simulador certificado como fonte única das regras**, uma **plataforma de pesquisa de IA multiagente** e **dois clientes de execução**: site Grow e tabuleiro físico. A evolução será determinada por testes e critérios de aprovação, não por prazos ou quantidade arbitrária de treinamento.
 
-**Status:** o planejamento detalhado foi preservado para continuidade. **O arquivo solicitado ainda não foi criado no projeto**, pois esta sessão está em modo de planejamento.
+**Status de execução (2026-10-03):** por decisão do usuário, a Fase 0 é considerada concluída por ora no escopo de planejamento e documentação: os passos 0.1–0.6 estão documentados. A lista do passo 0.4 foi validada estruturalmente a partir dos dados fornecidos pelo usuário, sem auditoria visual independente. O passo 0.5 inclui três convenções operacionais sujeitas à revisão; o passo 0.6 permanece documental e registra lacunas normativas para resolver antes da certificação integral da engine. Os passos 0.7 e 0.8 estão adiados para o futuro desenvolvimento do cliente de jogo do `war_analyzer`; não são considerados executados nem certificados. Essa decisão não equivale a certificação do canal online/físico ou de uma implementação.
 
 ---
 
@@ -137,7 +137,7 @@ Conterá documentação, configuração de integração, instalação, orquestra
 
 | Fase | Objetivo | Dependências |
 |---|---|---|
-| 0 | Certificar regras e viabilidade dos canais | Nenhuma |
+| 0 | Regras documentadas (0.1–0.6); canais online/físico adiados (0.7–0.8) | Nenhuma |
 | 1 | Infraestrutura e contratos | Descoberta da fase 0 |
 | 2 | Núcleo, tabuleiro e preparação | 0–1 |
 | 3 | Regras completas e conclusão das partidas | 2 |
@@ -159,7 +159,7 @@ Conterá documentação, configuração de integração, instalação, orquestra
 
 # 5. Fases e passos técnicos
 
-## Fase 0 — Certificação normativa e viabilidade
+## Fase 0 — Certificação normativa e viabilidade (encerrada por ora no escopo documental)
 
 **Objetivo:** impedir que a IA aprenda uma aproximação incorreta do WAR.
 
@@ -171,6 +171,32 @@ Conterá documentação, configuração de integração, instalação, orquestra
 - Identificar edição do tabuleiro, cartas, peças e eventuais diferenças físicas.
 - Separar licença do código de direitos sobre manual, imagens, tabuleiro e pesos de terceiros.
 
+#### Registro de execução — 2026-10-02
+
+**Escopo desta verificação:** inventário de arquivos, referências Git, licenças e metadados; não houve OCR nem revisão do conteúdo normativo, reservados ao passo 0.2.
+
+| Repositório | Branch/commit verificado | Estado da árvore de trabalho |
+|---|---|---|
+| Agregador `war` | `main` / `04a813ccd1f00dd0a7477e5bc4d0ec551ae3a782` | Limpa |
+| `war_AI` | `main` / `67d6d8707b44ba74f7b594c5b6fedf395fb6bcdd` | Limpa |
+| `war_game_engine` | `main` / `cc13350f9b4f9aedd08ba082d14f6774b391678c` | Limpa |
+| `war_analyzer` | `main` / `93823505b2533cd9ff49d005cf4a44223bdc2f84` | Limpa |
+
+Os dois arquivos abaixo têm 1.973.576 bytes cada e o mesmo SHA-256 (`1969b38acdbfe0ccd761c91995988e96cef5d2acfc5aea5abecebcaecc6e394c`); a comparação byte a byte também confirmou que são idênticos. Fica estabelecido como exemplar principal o [manual do agregador](war_manual_table_games.pdf). A cópia mantida no submódulo `war_analyzer` permanece como duplicata; não foi removida.
+
+- [doc/war_manual_table_games.pdf](war_manual_table_games.pdf)
+- [lib/war_analyzer/doc/war_manual_table_games.pdf](../lib/war_analyzer/doc/war_manual_table_games.pdf)
+
+O manual tem oito páginas. A capa identifica “Regras — O jogo da estratégia WAR” e exibe a marca Grow. Os metadados do PDF indicam processamento pelo Adobe Acrobat 7.0 Image Conversion Plug-in em 2006; isso não identifica a data de publicação, a edição ou a revisão do jogo.
+
+**Identificação e hierarquia de fontes informadas pelo usuário (2026-10-02):** as versões física e digital alvo são WAR 1 clássico. Para os objetivos, deve prevalecer a referência da versão física; os protótipos existentes de `war_analyzer` não são normativos e podem estar incorretos, devendo ser corrigidos posteriormente contra essa referência. A indicação do usuário fixa a autoridade funcional, mas não autentica por si só o ano/revisão ou os direitos de distribuição dos arquivos.
+
+Há 513 imagens em `war_analyzer/image`, incluindo os screenshots digitais [war_ss_1.png](../lib/war_analyzer/image/war_ss_1.png) e [war_reference_ss_1.png](../lib/war_analyzer/image/war_reference_ss_1.png), ambos do site `play.wargrow.com.br`, [anchor_template.png](../lib/war_analyzer/image/anchor_template.png) e imagens de depuração. **Assets de referência física/digital indicados pelo usuário em 2026-10-02:** o diretório [doc/images](images) contém a imagem do tabuleiro [mapa_war_classico.webp](images/mapa_war_classico.webp) (1500 × 1125) e oito folhas de cartas em PNG (877 × 612 cada), de [war_cartas1.png](images/war_cartas1.png) a [war_cartas8.png](images/war_cartas8.png). O usuário determinou que a referência física WAR 1 é normativa para objetivos e que os protótipos de `war_analyzer` não devem prevalecer. As imagens mostram 42 cartas de território, dois curingas, 14 objetivos e as tabelas impressas. Não há imagem das peças físicas nem metadados independentes que autentiquem ano/revisão ou direitos de distribuição. Também não foram encontrados arquivos de pesos/modelos nos formatos usuais pesquisados (`.pt`, `.pth`, `.onnx`, `.safetensors`, `.ckpt`, `.bin`, `.h5`, `.pb` ou `.model`).
+
+Quanto às licenças, [LICENSE](../LICENSE), [lib/war_AI/LICENSE](../lib/war_AI/LICENSE) e [lib/war_analyzer/LICENSE](../lib/war_analyzer/LICENSE) declaram MIT. Não foi encontrado arquivo de licença próprio em `war_game_engine`; não se presume que a licença do agregador se estenda ao submódulo. Essas licenças de código não estabelecem direitos sobre o manual, a marca/arte do jogo, imagens do produto ou do site. Nenhuma autorização separada para esses materiais foi localizada.
+
+**Resultado do passo 0.1: concluído com ressalvas.** Os commits, o inventário digital, os hashes e o exemplar principal estão verificados; a versão alvo e a precedência normativa das referências físicas foram informadas pelo usuário, e mapa/cartas foram localizados em `doc/images`. Permanecem sem autenticação independente o ano/revisão e os direitos de uso/distribuição dos materiais não codificados; as peças físicas não estão representadas nas imagens disponíveis.
+
 ### 0.2. Extrair e revisar o manual
 
 - Extrair/renderizar as páginas do PDF preservando a resolução disponível.
@@ -179,6 +205,63 @@ Conterá documentação, configuração de integração, instalação, orquestra
 - Não considerar aumento de resolução como recuperação de detalhes inexistentes.
 - Obter uma reprodução legível da mesma edição quando necessário.
 - Não preencher lacunas por conhecimento de Risk.
+
+#### Registro de execução — 2026-10-02
+
+**Método e qualidade da fonte**
+
+- Fonte revisada: [manual WAR do agregador](war_manual_table_games.pdf), oito páginas, SHA-256 `1969b38acdbfe0ccd761c91995988e96cef5d2acfc5aea5abecebcaecc6e394c`.
+- O PDF não tem camada de texto extraível; cada página é um scan em imagem, com resolução original de aproximadamente 668–675 × 908–915 pixels (72 ppi). As páginas foram renderizadas nessa resolução nativa.
+- OCR: Tesseract 4.1.1, idioma português (`por`), modelo `tessdata_best` cujo SHA-256 é `711de9dbb8052067bd42f16b9119967f30bada80d57e2ef24f65d09f531adb04`; segmentação automática de página (`--psm 3`). O OCR teve erros de leitura e ordem de colunas, em especial em ilustrações; não foi tratado como autoridade. O texto abaixo é uma síntese conferida visualmente, não uma transcrição corrigida palavra por palavra.
+- Os diagramas foram ampliados somente para inspeção. A ampliação não aumenta a resolução nem recupera informação ausente do scan.
+- Foi localizada uma cópia pública no [site TableGames](https://tablegames.com.br/wp-content/uploads/2017/10/war_manual_table_games.pdf). O hash é idêntico ao arquivo local; portanto, essa cópia não oferece resolução ou conteúdo adicional.
+- As oito páginas foram inspecionadas visualmente e comparadas ao OCR.
+
+**Conteúdo conferido por página (síntese)**
+
+| Página | Conteúdo normativo identificado |
+|---|---|
+| 1 | Introdução; objetivo individual secreto. |
+| 2 | Componentes: tabuleiro, seis conjuntos de exércitos, seis caixas, 14 cartas-objetivo, 44 cartas de território com dois curingas e seis dados (três vermelhos e três amarelos). Ficha pequena vale um exército; grande, dez. Cores listadas: branca, vermelha, preta, azul, amarela e verde. Cada jogador recebe um objetivo secreto; objetivos que dependam de cores não participantes devem ser retirados. O distribuidor tira os curingas do baralho e distribui as cartas de território no sentido horário, começando à sua esquerda. Coloca-se um exército da própria cor em cada território recebido; ao fim, todos estão ocupados. Os curingas voltam ao baralho e as cartas são embaralhadas. Conforme esclarecimento do usuário, o distribuidor é escolhido pelo maior resultado de dado; empate é resolvido por novo arremesso entre os empatantes, que determina quem começa, e a ordem dos demais segue no sentido horário da mesa. A primeira rodada consiste em receber e posicionar exércitos; da segunda em diante, a ordem do turno é receber/posicionar reforços, atacar, deslocar e receber carta se conquistou território. O primeiro a reforçar é o jogador seguinte àquele que recebeu a última carta de território, seguindo a ordem horária da mesa. |
+| 3 | Reforços: metade inteira do número de territórios, mínimo de três mesmo com menos de seis territórios (exemplos: oito dão quatro; 11 dão cinco); bônus por continente inteiro conforme Tabela I do tabuleiro, colocados obrigatoriamente no próprio continente. Exemplo: 19 territórios dão nove reforços básicos; América do Sul controlada dá mais dois, total 11, dos quais os dois continentais devem ir à América do Sul. Trocas de cartas também podem conceder reforços. Ataques começam na segunda rodada: origem com pelo menos dois exércitos; alvo adversário contíguo por fronteira ou linha pontilhada, independentemente do número de exércitos que o ocupa; qualquer número de ataques na vez, mas um por vez, possivelmente partindo de origens diferentes; declarar origem, alvo e exércitos usados; máximo de três participantes/dados por batalha. O atacante usa dados vermelhos e o defensor amarelos; o defensor pode usar o exército de ocupação. |
+| 4 | Continuação das regras de ataque e comparação decrescente dos dados (maior com maior, segundo com segundo, terceiro com terceiro); cada par dá uma perda a quem tiver o menor resultado, e empate favorece a defesa. Cada lado lança tantos dados quantos exércitos participarão da batalha, até três. Exemplo: atacante com quatro exércitos e defensor com três usam três dados cada; atacante 5, 4, 1 contra defesa 6, 3, 1 resulta em duas perdas do atacante e uma da defesa. A ilustração mostra três dados vermelhos do México contra um amarelo de Nova York. |
+| 5 | Exemplo: atacante com três exércitos usa dois dados contra um defensor; ataque 3, 2 contra defesa 6 faz o atacante perder um. A nota diz que cada vez que o atacante perde, perde o número de exércitos com que a defesa se defendeu. Para 10 contra 4, o texto descreve uma vitória do ataque e duas da defesa, deixando 8 contra 3; essa contabilidade é coerente com uma perda do defensor e duas do atacante. |
+| 6 | Continuação: em nova batalha de três dados contra três, o exemplo termina com três vitórias do ataque e remoção dos três últimos exércitos defensores. A conquista ocorre quando o defensor perde todos os exércitos; o atacante transfere de um a, no máximo, tantos exércitos quanto participaram do último ataque e pode atacar novamente a partir do território conquistado. Deslocamentos durante ataques só para territórios atacados. |
+| 7 | Movimento final entre territórios próprios contíguos: deixar ao menos um exército em cada território e não mover o mesmo exército novamente na mesma jogada. Exemplo: unidades do Brasil podem ir à Venezuela, mas essas mesmas unidades não podem seguir para o México na mesma jogada. Ao conquistar pelo menos um território, recebe-se uma carta no fim da jogada, após os deslocamentos; recebe-se no máximo uma por jogada e seu conteúdo fica secreto até a troca. Trocam-se três símbolos iguais ou três diferentes, pelos valores da Tabela II; as três primeiras trocas dão 4, 6 e 8 exércitos. Não é obrigatório trocar com até quatro cartas; com cinco, a troca de três é obrigatória na vez. Cada carta trocada que represente território próprio dá mais dois exércitos, obrigatoriamente nesse território. |
+| 8 | Curinga pode representar qualquer símbolo. Cartas trocadas ficam à parte e, quando o monte se esgota, são recolhidas, embaralhadas e recolocadas. Ao eliminar um jogador, recebem-se suas cartas; se isso elevar a mão acima de cinco, descarta-se aleatoriamente até cinco. Se o jogador eliminado era o objetivo de eliminação do atacante, este vence em vez de receber as cartas. Vitória ao cumprir o objetivo e revelar a carta. Traz resumo do turno. |
+
+**Complemento de evidências — mapa e cartas fornecidos pelo usuário**
+
+Foram examinadas a imagem do tabuleiro [mapa_war_classico.webp](images/mapa_war_classico.webp) (1500 × 1125) e as oito folhas de cartas [war_cartas1.png](images/war_cartas1.png), [war_cartas2.png](images/war_cartas2.png), [war_cartas3.png](images/war_cartas3.png), [war_cartas4.png](images/war_cartas4.png), [war_cartas5.png](images/war_cartas5.png), [war_cartas6.png](images/war_cartas6.png), [war_cartas7.png](images/war_cartas7.png) e [war_cartas8.png](images/war_cartas8.png) (877 × 612 cada). A inspeção foi visual, com OCR apenas auxiliar; em especial, o OCR da foto do mapa não leu as tabelas de forma confiável. A ampliação de regiões foi feita somente para inspeção e não recupera detalhe ausente. Os arquivos chegaram ao workspace nesta etapa, aparecem como não versionados no agregador e ainda não têm procedência, data ou edição autenticadas por documentação independente.
+
+As folhas apresentam **42 cartas de território, dois curingas e 14 cartas de objetivo**, compatíveis em quantidade com a lista de componentes do manual. A foto do mapa torna legíveis as tabelas impressas:
+
+| Tabela do tabuleiro | Valores lidos na imagem |
+|---|---|
+| I — bônus por continente | América do Norte: +5; Europa: +5; Ásia: +7; América do Sul: +2; África: +3; Oceania: +2 exércitos. |
+| II — troca de cartas | 1ª troca: +4; 2ª: +6; 3ª: +8; 4ª: +10; 5ª: +12; 6ª: +15; 7ª: +20. Conforme esclarecimento do usuário, a partir da 8ª troca aumenta cinco por troca: 8ª: +25; 9ª: +30; 10ª: +35; 11ª: +40; e assim sucessivamente. |
+
+**Esclarecimentos normativos do usuário — 2026-10-02 (WAR 1 clássico)**
+
+- Reforço inicial e reforço na fase normal: para $T$ territórios controlados, o total disponível para colocar é $R(T)=\max(3,\lfloor T/2\rfloor)$. Assim, 8 territórios dão 4 exércitos; 11 dão 5; 7 dão 3. O mínimo de três também se aplica na colocação inicial. A regra é registrada conforme o esclarecimento do usuário; o manual escaneado descreve explicitamente a metade inteira e o mínimo de três para reforços do turno, mas não detalha separadamente a reserva da primeira colocação.
+- Progressão da Tabela II: a partir da 8ª troca, acrescentar cinco exércitos por troca, conforme valores acima; para número da troca $n\geq8$, $B(n)=20+5(n-7)$.
+- Ordem de preparação e primeiro reforço: conforme esclarecimento do usuário, o maior resultado escolhe o distribuidor; em caso de empate, somente os empatantes fazem novo arremesso de dado, que decide quem começa primeiro. A partir desse jogador, a ordem da mesa segue no sentido horário. Depois da distribuição dos territórios, o primeiro jogador a reforçar é o próximo após quem recebeu a última carta de território; a sequência também segue no sentido horário.
+- IDs territoriais sul-americanos: usar o nome impresso na carta como ID canônico — **Colômbia** para a área rotulada Colômbia/Venezuela e **Bolívia** para a área rotulada Bolívia/Peru/Chile. Venezuela, Peru e Chile são aliases/rótulos cartográficos, não territórios ou IDs adicionais.
+- Objetivos: usar a referência física WAR 1 (as cartas em `doc/images`) como normativa; não usar os objetivos hardcoded nos protótipos atuais de `war_analyzer` como fonte. As diferenças já encontradas nos protótipos são defeitos a corrigir posteriormente, não uma ambiguidade das regras físicas. A regra de fonte não implica que o comportamento de `play.wargrow.com.br` já tenha sido certificado como idêntico.
+
+As 14 cartas de objetivo visíveis na referência física são: destruir os exércitos vermelhos, azuis, brancos, pretos, amarelos ou verdes (com conversão para conquistar 24 territórios nas condições impressas); conquistar América do Norte e Oceania; Ásia e América do Sul; Ásia e África; América do Norte e África; Europa, América do Sul e mais um continente à escolha; Europa, Oceania e mais um continente à escolha; conquistar 24 territórios à escolha; ou conquistar 18 territórios e ocupar cada um com pelo menos dois exércitos. Essa lista vem das imagens das cartas, não da camada textual do PDF, e prevalece sobre os protótipos existentes.
+
+**Resolução de precedência entre fontes:** por decisão informada pelo usuário, para o WAR 1 físico as cartas e o mapa de referência física são normativos. Portanto, os objetivos “Europa + Oceania + terceiro continente”, as cores de eliminação (branca/preta, não cinza/roxa) e os IDs territoriais “Colômbia” e “Bolívia” são os valores a implementar. Os protótipos hardcoded em [war_analyzer.py](../lib/war_analyzer/src/war_analyzer.py), [war_analyzer_gemini.py](../lib/war_analyzer/src/war_analyzer_gemini.py) e [war_analyzer_resumed.py](../lib/war_analyzer/src/war_analyzer_resumed.py) não alteram essa fonte de verdade e precisam de correção em etapa posterior. Os rótulos Venezuela/Peru/Chile não criam territórios adicionais. A transcrição completa de adjacências fica para o passo 0.4.
+
+**Lacunas e ambiguidades encontradas — manter sem inferência**
+
+1. A primeira colocação e a ordem para escolher o distribuidor/começar a reforçar estão registradas conforme os esclarecimentos do usuário acima. A regra de desempate não aparece legível no manual disponível; mantém-se como confirmação normativa do usuário para a edição alvo.
+2. Bônus continentais e progressão da Tabela II estão registrados acima a partir do mapa e do esclarecimento do usuário; devem ser preservados com rastreabilidade na matriz do passo 0.3.
+3. A nomenclatura combinada e a precedência das cartas físicas sobre os protótipos estão resolvidas conforme o usuário. As ligações/contiguidades e IDs do tabuleiro ainda não foram transcritos integralmente como grafo validado; isso permanece para o passo 0.4.
+4. No exemplo de 10 contra 4 da página 5, o resultado narrado (uma vitória do ataque, duas da defesa; 8 contra 3) é coerente com a regra de perdas. A legibilidade das faces do diagrama é limitada; os valores específicos dos dados não serão usados como base independente além do que puder ser lido diretamente.
+5. A escolha obrigatória dos dados defensivos está definida pelo esclarecimento posterior do usuário e registrada na matriz do passo 0.3. A semântica do deslocamento de grupos de exércitos ainda precisa ser formalizada sem exceder o que os exemplos garantem.
+
+**Resultado do passo 0.2: revisão do manual, complemento visual e esclarecimentos do usuário registrados, com limitações de procedência/resolução.** As oito páginas foram renderizadas, submetidas a OCR em português e conferidas visualmente; a cópia pública encontrada é byte a byte idêntica. Também foram examinados o mapa e as folhas de cartas, lidos os objetivos e as tabelas e registrados os esclarecimentos do usuário sobre exércitos iniciais, mínimo de três, ordem de preparação/primeiro reforço, progressão após a 7ª troca, nomes canônicos, autoridade das cartas físicas, dados defensivos, troca de cartas e vitória imediata. Continuam pendentes a transcrição/certificação do grafo, a formalização do movimento e a legibilidade limitada das faces no diagrama da página 5. Não se usa o `war_analyzer` como autoridade normativa.
 
 ### 0.3. Criar matriz de rastreabilidade
 
@@ -196,6 +279,18 @@ Cada regra terá:
 
 Regras de maior risco terão revisão independente.
 
+#### Registro de execução — 2026-10-02
+
+Foi criada a [matriz de rastreabilidade WAR 1 v1.0](war_rules_traceability_v1.0.md), com IDs estáveis para as regras, fonte/edição/página ou asset, enunciado e pré-condições, transição esperada, exemplos/fronteiras/testes propostos, implementação/testes encontrados, estado documental e fila de revisão independente. O catálogo dos 14 objetivos físicos está associado aos IDs `W1-OBJ-01` a `W1-OBJ-14`.
+
+O inventário confirmou que `war_game_engine` e `war_AI` ainda têm apenas documentação descritiva no checkout, e não foi localizada suíte de testes automatizados. A matriz registra separadamente as informações ausentes, ambiguidades e divergências dos protótipos; nenhum comportamento dos protótipos foi promovido a regra normativa.
+
+Uma revisão automatizada separada, somente de leitura, conferiu a matriz contra o manual, mapa, cartas e protótipos: confirmou a coerência do exemplo textual 10 contra 4 (uma vitória do ataque e duas da defesa deixam 8 contra 3), a progressão da Tabela II e os esclarecimentos do usuário; também confirmou que as divergências de cores/objetivos/territórios do analyzer estão assinaladas. A revisão não substitui parecer humano independente sobre a edição física nem execução de testes.
+
+**Adendo normativo do usuário — 2026-10-02:** mínimo/máximo de jogadores 3–6; conjunto de cores físicas; nomes de carta Colômbia e Bolívia como IDs canônicos únicos para as áreas compostas (com aliases do mapa); referência das cartas físicas para catálogo de objetivos e exclusão das implementações analyzer para filtro/fallback; troca opcional com cinco cartas no início da rodada e descarte escolhido ao atingir seis após a carta de fim de rodada; defesa com um dado por exército no território até o máximo de três; vitória verificada imediatamente sempre que o objetivo for satisfeito, com revelação da carta. A matriz foi atualizada. A regra de troca foi marcada como divergência entre o esclarecimento normativo do usuário e a leitura literal do manual, adotando-se o esclarecimento para o perfil-alvo WAR 1.
+
+**Resultado do passo 0.3: matriz documental criada, conferida e complementada com esclarecimentos normativos do usuário.** A matriz distingue regras do perfil-alvo, conflitos de fonte, divergências de protótipos e testes ainda não executados. Permanecem abertos o grafo do mapa, detalhes de movimentação e outros itens listados na matriz; a revisão independente humana das regras de alto risco continua pendente. O passo 0.4 não foi iniciado.
+
 ### 0.4. Certificar mapa e componentes
 
 Verificar:
@@ -210,6 +305,14 @@ Verificar:
 
 IDs não dependerão de nomes traduzidos ou coordenadas de imagem.
 
+#### Registro de execução — 2026-10-02
+
+Criado o [inventário do tabuleiro e componentes WAR 1](war_board_spec_v1.0.md). A inspeção das cartas e do mapa registra 42 territórios (9 na América do Norte, 4 na América do Sul, 7 na Europa, 6 na África, 12 na Ásia e 4 na Oceania), um símbolo por carta (14 triângulos, 14 círculos e 14 quadrados), dois curingas e a associação de cada carta ao continente. Uma verificação de consistência do inventário confirmou 42 IDs únicos, as seis cardinalidades continentais totalizando 42 e a distribuição de símbolos 14/14/14; isso valida a tabela documental, não um motor de jogo. Foram atribuídos IDs de projeto T01–T42 na ordem fixa do inventário de cartas; eles não são códigos impressos. Foram também registrados os nomes canônicos Colômbia e Bolívia, os bônus continentais, as seis cores e as denominações pequena=1/grande=10 documentadas no manual.
+
+**Resultado da checagem da tabela do usuário:** as 42 linhas T01–T42 foram verificadas; há 158 declarações direcionadas correspondentes a 79 pares únicos, sem IDs desconhecidos, auto-adjacências, duplicatas, territórios isolados ou componentes desconexos. A correção final do usuário removeu T21–T37 em ambos os sentidos e confirmou T36–T37, que permanece nos dois sentidos. O JSON foi sincronizado. Não se importou grafo de outra variante. Conforme orientação do usuário, nomes nas cartas são os IDs e aliases compostos são Colômbia/Venezuela → Colômbia e Bolívia/Peru/Chile → Bolívia. Esta verificação atesta a consistência recíproca da lista autorizada pelo usuário, não uma auditoria visual independente de cada fronteira. A quantidade de fichas por conjunto não foi fotografada e permanece como observação suplementar.
+
+**Resultado do passo 0.4: concluído no escopo solicitado pelo usuário.** Quantidade/identidade pelas cartas, continentes, bônus, símbolos, curingas, objetivos e denominações estão inventariados. A lista corrigida — sem T21–T37 e com T36–T37 — passou na verificação de reciprocidade e foi sincronizada no JSON: 42 territórios, 79 pares/158 declarações. Não houve auditoria fotográfica independente de cada fronteira; essa limitação está explícita no inventário e no grafo. No momento da conclusão deste registro, o passo 0.5 ainda não havia começado; sua execução foi iniciada posteriormente e está registrada abaixo.
+
 ### 0.5. Certificar preparação
 
 Documentar precisamente:
@@ -222,6 +325,16 @@ Documentar precisamente:
 - Sorteio e filtragem de objetivos.
 - Objetivos autorreferentes ou relacionados a cores ausentes.
 - Restrições e particularidades da primeira rodada.
+
+#### Registro de execução — 2026-10-02
+
+As páginas 2–3 do manual foram renderizadas e conferidas visualmente para a preparação. A especificação [war_setup_spec_v1.0.md](war_setup_spec_v1.0.md) registra: escolha de cores conforme manual; limite de 3–6 jogadores conforme esclarecimento do usuário; sorteio de objetivos e exclusão de missões para cores ausentes; desempate para escolha do distribuidor; distribuição horária das 42 cartas sem curingas; cálculo dos excedentes para cada mesa válida; um exército por território; reforços adicionais iniciais pela fórmula confirmada pelo usuário; escolha de colocação; devolução/embaralhamento do baralho; e ordem/fases da primeira rodada.
+
+**Verificações documentais:** para 3/4/5/6 jogadores, a distribuição sequencial produz 14/14/14; 11/11/10/10; 9/9/8/8/8; e 7 por jogador, respectivamente. As reservas territoriais iniciais são 7/5/4/3 exércitos adicionais por jogador. O primeiro a jogar é sempre quem segue o último a receber carta. O objetivo é sorteado sem reposição; depois do filtro de cores ausentes, restam $8+P$ cartas elegíveis para $P$ jogadores.
+
+O usuário informou que não poderia responder às perguntas de esclarecimento naquele momento, autorizou decisões autônomas e revisará o trabalho posteriormente. Para fechar o perfil operacional, foram adotadas e justificadas na [especificação da preparação](war_setup_spec_v1.0.md) três interpretações explícitas: embaralhar as 42 cartas territoriais após remover os curingas e antes da distribuição; repetir somente entre os empatados até um resultado único; e aplicar já na primeira rodada os bônus dos continentes completos no início da vez, com colocação obrigatória dentro do continente. O manual não explicita literalmente os dois primeiros procedimentos e não isola o bônus inicial como uma exceção; essas interpretações não são apresentadas como transcrição do manual.
+
+**Resultado do passo 0.5: concluído documentalmente para o perfil operacional, com as três interpretações identificadas e sujeitas à revisão do usuário.** Os cálculos de distribuição e reforços iniciais foram conferidos para 3–6 participantes; a matriz contém os casos de teste futuros e registra que não há engine de preparação nem testes executáveis. Naquele momento, o passo 0.6 ainda não havia começado; sua execução posterior está registrada abaixo.
 
 ### 0.6. Certificar o turno completo
 
@@ -241,7 +354,17 @@ Extrair, sem pressupor valores:
 - Mudanças de objetivo.
 - Instante exato da verificação de vitória.
 
-### 0.7. Investigar o site
+#### Registro de execução — 2026-10-02
+
+As páginas 3–8 do manual foram renderizadas e conferidas visualmente para extrair o turno completo. A especificação [war_turn_spec_v1.0.md](war_turn_spec_v1.0.md) consolida as fases da segunda rodada em diante; a fórmula de reforço e o mínimo; bônus continentais e seus destinos; conjuntos, progressão global e bônus territorial das trocas; conflito entre a leitura do manual e a regra do usuário para cinco/seis cartas; escolha do atacante e dados defensivos; resolução par a par e empates; perdas e retorno de peças; captura e ataques encadeados; deslocamento final; compra de uma carta; eliminação, efeitos sobre missões e limite de mão; e verificação imediata da vitória.
+
+**Conferências documentais:** as regras do manual e do usuário foram mantidas separadas. Os exemplos textuais de combate (p. 4 e p. 5) e a sequência do turno (p. 8) foram cotejados com a matriz; a progressão da Tabela II e os bônus da Tabela I já conferidos no passo 0.2 foram usados sem substituí-los por dados dos protótipos. O grafo do usuário tem adjacências não tipadas; por convenção explícita, o perfil usa qualquer ligação direta para o movimento final, sujeita a revisão.
+
+**Resultado do passo 0.6: concluído documentalmente para a extração do ciclo normal, não certificado para todos os casos-limite.** Permanecem duas lacunas normativas relevantes: como resolver dois objetivos satisfeitos pela mesma ação e se cartas descartadas por limite de mão entram na reciclagem reservada explicitamente às cartas trocadas. Nenhuma transição foi implementada ou executada em testes. Esses limites, a convenção de arestas para movimento e os casos de teste estão registrados na especificação e na matriz.
+
+### 0.7. Investigar o site — adiado
+
+**Status:** adiado por decisão do usuário até o futuro desenvolvimento do cliente de jogo do `war_analyzer`. Executar esta investigação antes da integração efetiva com o site e antes de certificar o cliente online; não tratar o adiamento como autorização para automação.
 
 Em sessão autorizada:
 
@@ -253,7 +376,9 @@ Em sessão autorizada:
 - Criar perfil online separado para divergências comprovadas.
 - Não usar estado interno que revele informações indisponíveis ao jogador.
 
-### 0.8. Investigar o tabuleiro físico
+### 0.8. Investigar o tabuleiro físico — adiado
+
+**Status:** adiado por decisão do usuário até o futuro desenvolvimento do cliente de jogo do `war_analyzer`. Executar os testes de câmera, peças e fluxo antes de certificar o cliente físico.
 
 Testar antecipadamente:
 
@@ -265,7 +390,9 @@ Testar antecipadamente:
 - Entrada privada do objetivo da IA.
 - Recaptura orientada e confirmação manual.
 
-**Critério de saída:** regras sem ambiguidades bloqueantes, edição identificada, domínio físico definido e estratégia de integração online cuja autorização e viabilidade possam ser demonstradas.
+**Encerramento da Fase 0 por ora — 2026-10-03:** a pedido do usuário, a fase é considerada concluída para o escopo atual de análise e documentação, com os passos 0.1–0.6 registrados. Os itens de integração dos canais online e físico foram explicitamente adiados: 0.7 será retomado antes do cliente online e 0.8 antes do cliente físico, durante o futuro desenvolvimento do cliente de jogo do `war_analyzer`. Não se afirma que esses canais já foram investigados ou aprovados.
+
+**Critérios de liberação posteriores:** resolver as lacunas normativas abertas no passo 0.6 antes de certificar a engine; concluir 0.7 antes de integrar/certificar o canal online; e concluir 0.8 antes de integrar/certificar o canal físico. O encerramento atual da Fase 0 não elimina esses gates técnicos.
 
 ---
 
@@ -1510,18 +1637,18 @@ Dentro da tentativa, dividir pelo número total de hipóteses confirmatórias re
 
 # 8. Arquivos existentes relevantes
 
-- [README.md](README.md) — responsabilidades, instalação e índice da documentação.
-- [.gitmodules](.gitmodules) — fronteiras e referências dos três submódulos.
-- [doc/war_manual_table_games.pdf](doc/war_manual_table_games.pdf) — fonte normativa a certificar.
-- [lib/war_game_engine/README.md](lib/war_game_engine/README.md) — documentação da engine, runner e certificação.
-- [lib/war_AI/README.md](lib/war_AI/README.md) — treinamento, liga, avaliação e modelos.
-- [lib/war_analyzer/src/war_analyzer.py](lib/war_analyzer/src/war_analyzer.py) — caracterização e migração do protótipo.
-- [lib/war_analyzer/src/war_analyzer_gemini.py](lib/war_analyzer/src/war_analyzer_gemini.py) — captura, OCR, cores e âncora.
-- [lib/war_analyzer/src/war_analyzer_resumed.py](lib/war_analyzer/src/war_analyzer_resumed.py) — comparação entre variantes.
-- [lib/war_analyzer/src/anchor_coordinates.py](lib/war_analyzer/src/anchor_coordinates.py) — referência de calibração.
-- [lib/war_analyzer/src/pixel_coordinates.py](lib/war_analyzer/src/pixel_coordinates.py) — ferramenta de coordenadas.
-- [lib/war_analyzer/src/pixel_hsv.py](lib/war_analyzer/src/pixel_hsv.py) — inspeção de cores.
-- [lib/war_analyzer/image/war_reference_ss_1.png](lib/war_analyzer/image/war_reference_ss_1.png) — fixture digital inicial, não dataset suficiente.
+- [README.md](../README.md) — responsabilidades, instalação e índice da documentação.
+- [.gitmodules](../.gitmodules) — fronteiras e referências dos três submódulos.
+- [doc/war_manual_table_games.pdf](war_manual_table_games.pdf) — fonte normativa a certificar.
+- [lib/war_game_engine/README.md](../lib/war_game_engine/README.md) — documentação da engine, runner e certificação.
+- [lib/war_AI/README.md](../lib/war_AI/README.md) — treinamento, liga, avaliação e modelos.
+- [lib/war_analyzer/src/war_analyzer.py](../lib/war_analyzer/src/war_analyzer.py) — caracterização e migração do protótipo.
+- [lib/war_analyzer/src/war_analyzer_gemini.py](../lib/war_analyzer/src/war_analyzer_gemini.py) — captura, OCR, cores e âncora.
+- [lib/war_analyzer/src/war_analyzer_resumed.py](../lib/war_analyzer/src/war_analyzer_resumed.py) — comparação entre variantes.
+- [lib/war_analyzer/src/anchor_coordinates.py](../lib/war_analyzer/src/anchor_coordinates.py) — referência de calibração.
+- [lib/war_analyzer/src/pixel_coordinates.py](../lib/war_analyzer/src/pixel_coordinates.py) — ferramenta de coordenadas.
+- [lib/war_analyzer/src/pixel_hsv.py](../lib/war_analyzer/src/pixel_hsv.py) — inspeção de cores.
+- [lib/war_analyzer/image/war_reference_ss_1.png](../lib/war_analyzer/image/war_reference_ss_1.png) — fixture digital inicial, não dataset suficiente.
 
 Os destinos novos de pacotes, testes, configurações, documentação e artefatos estão detalhados no plano preservado para execução.
 

@@ -554,6 +554,10 @@ treinamento com PyTorch 2.14.1 passou sem instalar o wheel; o audit transitivo
 desse extra fica no job GPU. O analyzer será auditado em Python 3.11 pela CI
 após a publicação dos submódulos.
 
+A primeira execução remota da CI detectou também o `setuptools` 79.0.1
+pré-instalado nos runners (PYSEC-2026-3447; correção disponível em 83.0.0).
+Os workflows agora atualizam explicitamente para 83.0.0 antes do audit.
+
 As notas oficiais de portabilidade do Python 3.11 foram revisadas: os usos
 encontrados de `random.sample` recebem listas e `random.shuffle` usa apenas o
 argumento padrão; não foram encontrados usos dos APIs removidos/depreciados

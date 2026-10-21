@@ -1,0 +1,165 @@
+name: WAR aggregate CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_extended:
+        description: Run the complete suite with the extended timeout
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Python and frontend integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Verify pinned submodule revisions
+        run: |
+          git submodule status --recursive
+          if git submodule status --recursive | grep -Eq '^[-+U]'; then
+            echo "A submodule is not checked out at the aggregator's pinned commit." >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            lib/war_game_engine/pyproject.toml
+            lib/war_AI/pyproject.toml
+            lib/war_analyzer/pyproject.toml
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: lib/war_analyzer/pwa/.nvmrc
+          cache: npm
+          cache-dependency-path: lib/war_analyzer/pwa/package-lock.json
+
+      - name: Install system OCR dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tesseract-ocr
+          tesseract --list-langs
+
+      - name: Install all CPU CI extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "lib/war_game_engine[test,quality]"
+          python -m pip install -e "lib/war_AI[test,quality,service]"
+          python -m pip install -e "lib/war_analyzer[test,quality,vision]"
+          python -m pip install pip-audit==2.10.1
+
+      - name: Build module wheels
+        run: |
+          mkdir -p /tmp/war-wheels
+          python -m pip wheel --no-deps --wheel-dir /tmp/war-wheels lib/war_game_engine
+          python -m pip wheel --no-deps --wheel-dir /tmp/war-wheels lib/war_AI
+          python -m pip wheel --no-deps --wheel-dir /tmp/war-wheels lib/war_analyzer
+
+      - name: Test module and cross-module contracts
+        run: |
+          python -m pip check
+          python -m pytest -q \
+            lib/war_game_engine/tests \
+            lib/war_AI/tests \
+            lib/war_analyzer/tests \
+            tests
+
+      - name: Lint and type-check
+        run: |
+          (cd lib/war_game_engine && ruff check src tests scripts && mypy)
+          (cd lib/war_AI && ruff check src tests && mypy)
+          (cd lib/war_analyzer && ruff check src tests && mypy)
+          python -m compileall -q lib/war_analyzer/src
+
+      - name: Audit Python dependencies
+        run: pip-audit --skip-editable
+
+      - name: Install frontend dependencies
+        working-directory: lib/war_analyzer/pwa
+        run: npm ci
+
+      - name: Regenerate shared contracts
+        working-directory: lib/war_analyzer/pwa
+        run: npm run generate:contracts
+
+      - name: Reject stale generated contracts
+        run: |
+          git -C lib/war_game_engine diff --exit-code -- src/war_game_engine/schemas/contract-envelope-v1.json
+          git -C lib/war_analyzer diff --exit-code -- pwa/src/contracts.generated.ts
+
+      - name: Type-check, build, and audit frontend
+        working-directory: lib/war_analyzer/pwa
+        run: |
+          npm run typecheck
+          npm run build
+          npm audit --audit-level=high
+
+  extended:
+    name: Extended CPU validation
+    if: github.event_name == 'workflow_dispatch' && inputs.run_extended
+    needs: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install system OCR dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tesseract-ocr
+
+      - name: Install modules and tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "lib/war_game_engine[test,quality]"
+          python -m pip install -e "lib/war_AI[test,quality,service]"
+          python -m pip install -e "lib/war_analyzer[test,quality,vision]"
+          python -m pip install pip-audit==2.10.1
+
+      - name: Run complete test suite and dependency audit
+        run: |
+          python -m pytest -vv --durations=0 \
+            lib/war_game_engine/tests \
+            lib/war_AI/tests \
+            lib/war_analyzer/tests \
+            tests
+          pip-audit --skip-editable
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"

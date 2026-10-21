@@ -407,6 +407,22 @@ Testar antecipadamente:
 - Manter imports da engine independentes de componentes gráficos e neurais.
 - Usar `war_ai` como import Python, preservando o nome do repositório `war_AI`.
 
+**Status do passo 1.1 (2026-10-21): implementado e validado localmente.** Os
+três submódulos agora têm metadados de build; engine e IA usam pacotes sob
+`src/`, e os seis módulos existentes do analyzer são empacotados sem mover ou
+alterar seus scripts. Os extras `test`, `training`, `vision` e `service` têm
+dependências diretas com versões fixas. Os READMEs documentam Tesseract,
+sessão gráfica e seleção de driver/build PyTorch.
+
+**Verificação:** instalação editável dos três projetos e extras de teste/visão
+em Python 3.10.12; 2 testes passaram; compilação dos seis scripts do analyzer;
+import headless da engine; importação dos módulos do analyzer; smoke test de
+Gymnasium, PettingZoo, FastAPI e Uvicorn; OCR sintético reconhecido como `123`
+com Tesseract 4.1.1. O resolver também aceitou o extra completo de treinamento
+e serviço. O wheel do PyTorch não foi instalado nem executado; não houve teste
+de GPU. As mudanças permanecem nos worktrees locais dos submódulos, sem
+commits nem atualização de gitlinks (a publicar no passo 1.5).
+
 ### 1.2. Adotar uma pilha inicial
 
 Proposta:
@@ -423,6 +439,43 @@ Proposta:
 
 As versões e licenças serão verificadas antes de serem travadas.
 
+**Registro de versões e licenças diretas (2026-10-21):**
+
+| Grupo | Versões fixadas | Licenças declaradas |
+|---|---|---|
+| Build e engine/IA | setuptools 75.8.2; NumPy 2.2.6; PyTorch 2.14.1; PettingZoo 1.25.0; Gymnasium 1.1.1 | MIT; BSD-3-Clause; BSD-3-Clause; MIT; MIT |
+| Testes | pytest 9.0.3; Hypothesis 6.130.2 | MIT; MPL-2.0 |
+| Qualidade | Ruff 0.17.1; mypy 2.4.0; mutmut 3.8.0 | MIT; MIT; BSD-3-Clause |
+| Serviço | FastAPI 0.158.2; Starlette 1.3.1; Uvicorn 0.34.0 | MIT; BSD-3-Clause; BSD-3-Clause |
+| Visão | opencv-python 4.11.0.86; pytesseract 0.3.13; mss 10.0.0; pynput 1.8.1; Pillow 13.0.0 | Apache-2.0; Apache-2.0; MIT; LGPLv3; MIT-CMU |
+| PWA | React e ReactDOM 19.3.1; Vite 8.3.5; plugin-react 6.1.2; TypeScript 7.0.2; @types/react e @types/react-dom 19.3.0; @types/node 22.20.5 | MIT, exceto TypeScript (Apache-2.0) |
+| Toolchain web | Node.js 22.23.4; npm 10.9.9 | versões verificadas no ambiente; não são dependências publicadas do pacote |
+
+As licenças foram consultadas nos metadados das releases no PyPI/npm. A
+licença da release do PettingZoo também foi conferida no repositório: MIT
+para o projeto, com atribuições de componentes de terceiros sob MIT/Apache-2.0.
+`pynput` é opcional e LGPLv3; preservar seus avisos se o extra de visão for
+distribuído. Esta checagem cobre dependências diretas; a auditoria transitiva
+fica para a verificação de dependências do passo 1.5.
+
+**Status do passo 1.2 (2026-10-21): concluído localmente.** Os extras Python
+agora incluem Ruff, mypy e mutmut; o mypy estrito e Ruff estão configurados.
+Foi criado o shell TypeScript/React/Vite em `lib/war_analyzer/pwa/`, com
+versões exatas e lock npm. O rastreamento escolhido é local/autocontido, com
+artefatos endereçados por SHA-256; o esquema completo de proveniência será
+definido no passo 1.6 antes das execuções de treinamento.
+
+**Verificação:** em Python 3.10.12, 3 testes passaram, Ruff e mypy passaram
+nos três submódulos, e o CLI do mutmut foi instalado. Em Node 22.23.4/npm
+10.9.9, `npm ci`, `npm run typecheck` e `npm run build` passaram; `npm audit`
+reportou zero vulnerabilidades conhecidas. Não foi executada campanha de
+mutação porque engine e IA ainda não têm lógica de domínio. O shell web ainda
+não é instalável/offline: manifest, service worker, sessões, voz e ACK ficam
+para a fase 13. Os protótipos antigos do analyzer permanecem fora de Ruff/mypy
+até a caracterização do passo 10.1.
+As alterações permanecem nos worktrees locais dos submódulos, sem commits nem
+atualização de gitlinks; a publicação permanece no passo 1.5.
+
 ### 1.3. Formalizar os contratos
 
 - Definir os tipos da seção 3.
@@ -431,6 +484,21 @@ As versões e licenças serão verificadas antes de serem travadas.
 - Implementar validação e testes de serialização.
 - Documentar exemplos públicos, privados e incompletos.
 - Recusar incompatibilidades de versão explicitamente.
+
+**Status do passo 1.3 (2026-10-21): implementado e validado localmente.**
+`war_game_engine.contracts` define os contratos da seção 3.2 com validação
+estrita; `TerritoryState` não contém geometria e `BoardGeometry` não contém
+propriedade/tropas. `ContractEnvelope` exige schema `1.0`, e o parser recusa
+versões incompatíveis antes de validar o payload. A JSON Schema é gerada de
+Pydantic 2.14.1 (MIT); os tipos TypeScript são gerados por
+json-schema-to-typescript 16.0.0 (MIT). Os exemplos público, privado e
+incompleto estão documentados em [war_contracts_v1.0.md](war_contracts_v1.0.md).
+
+**Verificação:** 14 testes passaram nos três submódulos; Ruff e mypy passaram;
+os exemplos serializam e validam, campos privados em estado público são
+recusados e leituras desconhecidas/ambíguas permanecem explícitas. A schema
+gerada contém os 18 tipos de contrato, o wheel da engine a inclui, e
+`npm run generate:contracts`, typecheck e build passaram.
 
 ### 1.4. Versionar todas as semânticas relevantes
 
@@ -447,6 +515,23 @@ Versionar separadamente:
 
 Alterar regras ou codificação deverá invalidar certificados relacionados.
 
+**Status do passo 1.4 (2026-10-21): implementado e validado localmente.** As
+versões são independentes em formato `MAJOR.MINOR.PATCH`: regras, API, schema
+de observação e encoder, schema de ação e encoder, replay, dataset, modelo,
+configuração de inferência e geometria. O `schema_version` do envelope
+permanece separado da versão da API. `CertificateManifest` registra o vetor
+de versões; `certificate_invalidation_reasons` deriva quais escopos ficaram
+obsoletos, sem apagar o registro histórico.
+
+**Verificação:** 25 testes passaram nos três submódulos, incluindo a matriz de
+dependências de certificados: regras invalidam engine/policy, mudança de
+encoder invalida policy/dataset, e dimensões não relacionadas preservam seus
+certificados. Ruff e mypy passaram; JSON Schema e tipos TypeScript foram
+regenerados, typecheck/build passaram, o wheel inclui contratos e versionamento,
+e `npm audit` não encontrou vulnerabilidades conhecidas. Incrementar a versão
+semântica correspondente permanece obrigatório quando uma regra ou codificação
+mudar; commits e CI de enforcement ficam para o passo 1.5.
+
 ### 1.5. Criar CI por módulo e na raiz
 
 - Checkout dos submódulos em commits fixos.
@@ -456,6 +541,23 @@ Alterar regras ou codificação deverá invalidar certificados relacionados.
 - Smoke tests CPU em alterações comuns.
 - Campanhas GPU e testes extensos em jobs específicos.
 - Publicar commits dos submódulos antes de atualizar os gitlinks do agregador.
+
+**Ajuste de dependências durante o passo 1.5 (2026-10-21):** o audit do
+ambiente Python 3.10 encontrou vulnerabilidades conhecidas nas versões
+anteriores de pytest, Starlette/FastAPI, Pillow e PyTorch. pytest foi atualizado
+para 9.0.3, FastAPI para 0.158.2, Starlette para 1.3.1 e PyTorch para 2.14.1.
+Pillow 13.0.0 corrige os advisories encontrados, mas requer Python 3.11; por
+isso o mínimo foi elevado somente no `war_analyzer`. Engine e IA continuam
+com mínimo 3.10. O audit local das dependências instaláveis de engine/IA em
+Python 3.10 passou sem vulnerabilidades conhecidas. A resolução do extra de
+treinamento com PyTorch 2.14.1 passou sem instalar o wheel; o audit transitivo
+desse extra fica no job GPU. O analyzer será auditado em Python 3.11 pela CI
+após a publicação dos submódulos.
+
+As notas oficiais de portabilidade do Python 3.11 foram revisadas: os usos
+encontrados de `random.sample` recebem listas e `random.shuffle` usa apenas o
+argumento padrão; não foram encontrados usos dos APIs removidos/depreciados
+listados. Nenhuma modernização específica do 3.11 foi necessária.
 
 ### 1.6. Definir reprodutibilidade
 

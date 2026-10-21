@@ -443,7 +443,7 @@ As versões e licenças serão verificadas antes de serem travadas.
 
 | Grupo | Versões fixadas | Licenças declaradas |
 |---|---|---|
-| Build e engine/IA | setuptools 75.8.2; NumPy 2.2.6; PyTorch 2.14.1; PettingZoo 1.25.0; Gymnasium 1.1.1 | MIT; BSD-3-Clause; BSD-3-Clause; MIT; MIT |
+| Build e engine/IA | setuptools 83.0.0; NumPy 2.2.6; PyTorch 2.14.1; PettingZoo 1.25.0; Gymnasium 1.1.1 | MIT; BSD-3-Clause; BSD-3-Clause; MIT; MIT |
 | Testes | pytest 9.0.3; Hypothesis 6.130.2 | MIT; MPL-2.0 |
 | Qualidade | Ruff 0.17.1; mypy 2.4.0; mutmut 3.8.0 | MIT; MIT; BSD-3-Clause |
 | Serviço | FastAPI 0.158.2; Starlette 1.3.1; Uvicorn 0.34.0 | MIT; BSD-3-Clause; BSD-3-Clause |
@@ -557,7 +557,8 @@ pela CI remota, sem vulnerabilidades conhecidas.
 
 A primeira execução remota da CI detectou também o `setuptools` 79.0.1
 pré-instalado nos runners (PYSEC-2026-3447; correção disponível em 83.0.0).
-Os workflows agora atualizam explicitamente para 83.0.0 antes do audit.
+Os jobs atualizam explicitamente essa dependência antes do audit, e os três
+`pyproject.toml` fixam a mesma versão corrigida no ambiente isolado de build.
 
 As notas oficiais de portabilidade do Python 3.11 foram revisadas: os usos
 encontrados de `random.sample` recebem listas e `random.shuffle` usa apenas o

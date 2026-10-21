@@ -551,8 +551,9 @@ isso o mínimo foi elevado somente no `war_analyzer`. Engine e IA continuam
 com mínimo 3.10. O audit local das dependências instaláveis de engine/IA em
 Python 3.10 passou sem vulnerabilidades conhecidas. A resolução do extra de
 treinamento com PyTorch 2.14.1 passou sem instalar o wheel; o audit transitivo
-desse extra fica no job GPU. O analyzer será auditado em Python 3.11 pela CI
-após a publicação dos submódulos.
+desse extra está configurado no job GPU manual. A consulta OSV direta para
+PyTorch 2.14.1 não encontrou advisories. O analyzer foi auditado em Python 3.11
+pela CI remota, sem vulnerabilidades conhecidas.
 
 A primeira execução remota da CI detectou também o `setuptools` 79.0.1
 pré-instalado nos runners (PYSEC-2026-3447; correção disponível em 83.0.0).
@@ -562,6 +563,21 @@ As notas oficiais de portabilidade do Python 3.11 foram revisadas: os usos
 encontrados de `random.sample` recebem listas e `random.shuffle` usa apenas o
 argumento padrão; não foram encontrados usos dos APIs removidos/depreciados
 listados. Nenhuma modernização específica do 3.11 foi necessária.
+
+**Status do passo 1.5 (2026-10-21): concluído e publicado.** Os commits dos
+três submódulos foram publicados antes da atualização dos gitlinks do
+agregador. A CI final passou em todos os quatro repositórios:
+
+- [Engine: Python 3.10/3.11, testes, lint, tipos e audit](https://github.com/Marcelomm103/war_game_engine/actions/runs/39673235348)
+- [IA: Python 3.10/3.11, testes, lint, tipos, audit e resolução do extra de treinamento](https://github.com/Marcelomm103/war_AI/actions/runs/39673235894)
+- [Analyzer: Python 3.11, OCR, audit e PWA](https://github.com/Marcelomm103/war_analyzer/actions/runs/39673235594)
+- [Agregador: contratos cruzados, audit Python, geração de contratos, build/audit frontend e scan de segredos](https://github.com/Marcelomm103/war/actions/runs/39673271858)
+
+A primeira execução remota detectou o `setuptools` vulnerável do runner; após
+fixar a atualização para 83.0.0, os audits passaram. A validação CPU estendida
+permanece opt-in. O smoke GPU manual não foi executado por falta de runner
+self-hosted com labels `linux`, `x64` e `gpu`; o job está configurado para
+quando esse runner estiver disponível.
 
 ### 1.6. Definir reprodutibilidade
 

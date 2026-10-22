@@ -4,24 +4,27 @@ Repository containing the client and the AI that plays the boardgame war, as wel
 ## Development container
 
 The repository uses Git submodules for its Python packages. Initialize them
-before building the single development container:
+then open the repository folder in VS Code:
 
 ```bash
 git submodule update --init --recursive
-docker compose build
-docker compose up -d
-docker compose exec dev bash
+code .
 ```
+
+In VS Code, run **Dev Containers: Reopen in Container** from the Command
+Palette. VS Code builds the image from `Dockerfile`, creates the development
+container, and opens the integrated terminal inside it. No Docker Compose
+configuration is used.
 
 The container provides Python 3.11, Node.js 22.23.4, npm 10.9.9, Git, and
 Tesseract OCR with English data. It installs the Python test, quality, service,
 and vision extras used by the aggregate CI, the `war_AI[training]` extra, and
 `pip-audit`. The PWA's npm dependencies are installed automatically when opened
-as a VS Code Dev Container. When using Compose directly, install them once (and
-again after its lockfile changes):
+as a VS Code Dev Container. If the PWA lockfile changes, refresh them from the
+integrated terminal:
 
 ```bash
-docker compose exec dev npm ci --prefix lib/war_analyzer/pwa
+npm ci --prefix lib/war_analyzer/pwa
 ```
 
 From the container, run the aggregate Python tests with:
@@ -45,7 +48,9 @@ container uses the CPU-only PyTorch wheel; CUDA training requires selecting a
 compatible CUDA wheel in the Dockerfile and configuring GPU passthrough and a
 compatible host driver.
 
-Screen capture and OpenCV windows also require additional host display access,
-which is not configured by default.
+The PWA port 5173 is forwarded by VS Code. Screen capture and OpenCV windows
+also require additional host display access, which is not configured by
+default.
 
-Stop the container with `docker compose down`.
+To leave the container, run **Dev Containers: Reopen Folder Locally** from the
+Command Palette.

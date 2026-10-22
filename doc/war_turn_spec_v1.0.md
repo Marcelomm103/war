@@ -122,6 +122,8 @@ Ordene cada conjunto do resultado maior para o menor e compare os dados por posi
 
 Cada rolagem resolve uma confrontação. Se ambos continuam com exércitos no território, o atacante decide se realiza outra batalha ou para. Não há conversão de uma rolagem em várias rodadas automáticas de combate.
 
+Na engine, a ação de ataque fixa origem, alvo e dados do atacante antes de criar uma `ChanceRequest`; a quantidade defensiva é registrada como `min(exércitos defensores, 3)`. Enquanto o pedido estiver pendente, nenhuma outra ação é legal. O simulador amostra um `ChanceOutcome` pelo stream de combate; o site ou o tabuleiro físico informam faces observadas com origem explícita. Outcomes registram IDs únicos de pedido e evento, e não podem ser reaplicados. Um resultado observado não avança o RNG interno. Um `ChanceOutcome` público só é aceito com exatamente as faces e quantidades pedidas; perdas agregadas sem faces observadas não são convertidas em rolagens fictícias. A ausência de resultado mantém o pedido pendente, sem sorteio local substituto. Se o defensor sobreviver, a fase de ataques continua; se for eliminado, o estado aguarda a ocupação obrigatória da seção 5.
+
 ## 5. Conquista, continuidade e eliminação
 
 Quando todos os exércitos defensores de um território são destruídos, o atacante conquista esse território e deve transferir para ele pelo menos um exército, no máximo o número de exércitos participantes do **último ataque** (manual, p. 6); a origem conserva seu exército de ocupação. A escolha do número respeita também os exércitos ainda disponíveis na origem.
@@ -134,6 +136,12 @@ Um jogador é eliminado quando seus exércitos são destruídos por completo. As
 2. Caso contrário, o atacante recebe as cartas do eliminado; se ficar com mais de cinco, escolhe-se aleatoriamente, sem olhar, o necessário para voltar a cinco (manual, p. 8).
 3. Se outra pessoa detinha o objetivo de eliminar a cor eliminada, aplica-se o fallback impresso na carta: o objetivo muda para conquistar 24 territórios. Isso vale mesmo quando o eliminador não é o titular daquela missão; as implementações hardcoded do analyzer são excluídas como fonte (cartas físicas e esclarecimento do usuário).
 4. Atualizam-se posse, contagem de territórios e objetivos antes de oferecer a próxima decisão. A condição de vitória é verificada imediatamente conforme a seção 7.
+
+Na engine, a transferência de ocupação é uma decisão separada com limite
+registrado pelo último ataque. Após a ocupação, a fase `objective_check`
+bloqueia novas ações até que a seção 8 seja avaliada. A mão do eliminado só é
+transferida depois dessa adjudicação, pois uma vitória do atacante não concede
+as cartas.
 
 ## 6. Deslocamento final
 
@@ -148,11 +156,15 @@ Depois de declarar encerrados os ataques, o jogador pode, se desejar, deslocar e
 
 Não foram encontrados no manual suporte para movimento de vários passos através de territórios intermediários, movimento por território de adversário, remoção do último exército de um território, ou reutilização da mesma unidade no movimento final. Não adicionar essas regras.
 
+Na engine, cada transferência é uma ação direta e registra as unidades que chegaram ao destino como já movimentadas. Uma transferência posterior pela mesma rota é permitida apenas com tropas ainda não movimentadas; o ledger agrega essas transferências sem tornar as tropas recebidas elegíveis para outra rota. Cada ação de movimento pausa em `objective_check` antes da próxima decisão.
+
 ## 7. Compra de carta e encerramento do turno
 
 Após concluir o deslocamento final, se o jogador conquistou um ou mais territórios durante a vez, recebe **uma única carta de território**, não uma carta por conquista. O conteúdo fica secreto até a troca (manual, p. 7). Sem conquista, não recebe carta. Depois da compra, aplica-se o descarte escolhido para evitar que a mão chegue a seis, conforme a regra do usuário na seção 3.2.
 
 Se o monte se esgotar, a regra explícita da p. 8 recicla as cartas anteriormente trocadas. O destino separado das cartas descartadas por limite de mão continua pendente; não as tratar como cartas trocadas sem confirmação.
+
+Na engine, a compra é uma ação própria após o movimento final. Se ela elevar a mão de cinco para seis cartas, a vez aguarda uma decisão de descarte; a carta escolhida vai para uma zona separada, ainda sem destino de reciclagem normativo. Se tanto o monte quanto a pilha de cartas trocadas estiverem vazios, a compra é rejeitada explicitamente em vez de inventar uma fonte de cartas.
 
 ## 8. Verificação de objetivo e vitória
 
@@ -164,7 +176,33 @@ O manual, p. 8, diz que o jogo termina quando um jogador atinge seu objetivo e q
 - Uma missão de eliminação de cor convertida para conquistar 24 deve passar a ser avaliada como esse novo objetivo imediatamente após o evento que causou a conversão.
 - O árbitro pode avaliar missões privadas, mas não deve expor objetivo ou estado oculto de outros jogadores antes de uma vitória ser anunciada.
 
+`objective_check` é resolvido antes da próxima decisão após cada ação relevante.
+O avaliador tipado cobre eliminação/fallback, posse de continentes, contagem de
+territórios e guarnições. Se mais de uma missão ficar satisfeita, a engine
+preserva os candidatos para adjudicação sem escolher por ordem acidental.
+Somente depois de encerrada a partida o estado público revela o objetivo e
+eventual fallback do vencedor.
+
+Na engine, cada ação relevante entra em `objective_check` antes da próxima
+decisão. Colocações de exércitos são atômicas (uma tropa por ação); batalhas,
+ocupações e transferências finais também são resolvidas individualmente. Se
+mais de uma missão estiver satisfeita, a engine preserva o estado pendente e
+exige adjudicação, sem selecionar um vencedor por ordem de execução. Após uma
+vitória, `PublicGameState` revela o objetivo original e eventual fallback do
+vencedor; antes disso, ambos permanecem privados.
+
 **Granularidade operacional:** cada colocação de tropas, rolagem/resolução de batalha com suas consequências obrigatórias e transferência final de exércitos é uma ação atômica. A checagem ocorre após todas as consequências automáticas dessa ação e antes da próxima decisão. Se uma operação futura agrupar várias colocações ou movimentos, deverá preservar checagem entre as ações constituintes, em vez de adiar a vitória para o fim da fase.
+
+O encerramento de um replay não é, por si só, vitória da partida.
+`ReplayOutcome` separa a vitória oficial (que deve coincidir com
+`winner_player_id` do estado) da eliminação individual, desistência,
+interrupção operacional e truncamento técnico do treinamento. Eliminação
+individual só encerra o jogo quando também satisfaz uma missão; desistência e
+interrupção não inventam efeitos sobre territórios, cartas ou tropas.
+Interrupção operacional conserva o último estado válido para retomada;
+truncamento registra tipo/valor do limite e deixa o estado sem vencedor.
+Limites de turnos, ações, tempo ou territórios nunca adjudicam uma missão nem
+fabricam vencedor.
 
 **Vitórias simultâneas — sem desempate normativo identificado:** uma única ação pode alterar a missão de eliminação de uma pessoa para “conquistar 24 territórios” ao mesmo tempo que completa outro objetivo. O manual e o esclarecimento do usuário exigem vitória imediata, mas não indicam prioridade para duas missões que passem a ser verdadeiras na mesma transição. A engine não deve escolher um vencedor por ordem de lista, cor ou implementação acidental; deixar o estado como conflito de adjudicação até decisão do usuário/regra de referência. Esse ponto é bloqueante para certificar o encerramento em 100% dos estados.
 
@@ -175,7 +213,8 @@ O manual, p. 8, diz que o jogo termina quando um jogador atinge seu objetivo e q
 | Vitória simultânea em uma mesma ação | Sem desempate no manual nem instrução do usuário; seção 8. | **Pendente e bloqueante** para certificação total do término. |
 | Ligações pontilhadas no movimento final | P. 7 fala em contíguos; p. 3 define linha pontilhada para ataque; a lista de adjacências não tipa arestas. | **Convenção operacional**: usar toda adjacência direta do grafo no movimento. Revisar com mapa/regras antes de homologar. |
 | Reciclagem dos descartes por limite de mão | P. 8 recicla explicitamente cartas trocadas; não menciona descartes aleatórios da eliminação nem descarte escolhido após compra. | **Pendente**: mantê-los distintos da pilha de cartas trocadas; decidir reutilização antes de certificar o ciclo do baralho. |
-| Revisão independente e testes | Engine ainda não implementada; não há testes de transição no checkout. | **Pendente** para certificação executável; este arquivo é uma especificação, não um certificado de código. |
+| Esgotamento do monte e da pilha de trocas | Se todas as cartas estiverem em mãos ou em descartes por limite, não há carta para a compra obrigatória por conquista. | **Pendente**: a engine rejeita explicitamente a compra; definir a regra antes de homologar esse estado. |
+| Revisão independente e testes | Reforços/cartas, combate, ocupação, movimentação e os 14 avaliadores de objetivo têm transições/testes; o desempate de vitórias simultâneas não está normatizado. | **Pendente** para certificação executável e adjudicação simultânea; este arquivo não é um certificado de código. |
 
 ## Resultado do passo 0.6
 

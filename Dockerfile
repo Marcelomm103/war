@@ -15,6 +15,7 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         build-essential \
         git \
+        openssh-client \
         libgl1 \
         libglib2.0-0 \
         libsm6 \
@@ -49,5 +50,3 @@ RUN python3 -m venv "${VIRTUAL_ENV}" \
     && mkdir -p lib/war_analyzer/pwa/node_modules
 
 EXPOSE 5173
-
-CMD ["sleep", "infinity"]

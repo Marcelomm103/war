@@ -91,21 +91,55 @@ e os validadores ficam em
 [`contracts.py`](../lib/war_game_engine/src/war_game_engine/contracts.py).
 
 `FullGameState` preserva mãos, objetivos, baralho e `random_streams_state`;
-`PublicGameState` nunca inclui esses dados privados. `turn_player_id` identifica
+`PublicGameState` não inclui esses dados privados antes do fim; quando há
+vitória, revela somente o objetivo e o fallback do vencedor. `turn_player_id` identifica
 quem está na vez e `decision_player_id` quem responde à decisão atual; os
 campos antigos `active_player_id` continuam aceitos como alias de
 compatibilidade do jogador da vez. Pools de reforço retêm a origem e as
-restrições de destino; `MovementControl` mantém o registro de transferências
-da vez. Validadores relacionam proprietários, contagens de territórios/exércitos,
+restrições de destino; `MovementControl` agrega transferências por rota e
+permite calcular tropas ainda não movimentadas. Validadores relacionam
+proprietários, contagens de territórios/exércitos,
 participantes eliminados, pools e referências de movimento. Os contadores
 inteiros não têm teto artificial.
+
+`phase_id` identifica uma fase tipada da preparação, reforços, combate,
+ocupação, verificação de objetivos, movimentação, compra/descarte de carta,
+encerramento de turno ou término. Pools de troca guardam origem e, para bônus de cartas de território
+próprio, restringem o destino ao território representado. A pilha reciclável
+das cartas trocadas permanece separada dos descartes por limite de mão.
+`pending_combat` registra a escolha de ataque e os dois números de dados até a
+chegada do resultado; `pending_occupation` limita a transferência obrigatória
+após derrotar a defesa; `pending_objective_check` impede novas ações até avaliar
+objetivos depois de cada transição relevante. Esses dados são públicos. Estados
+registram também autoria da eliminação e, quando aplicável, vencedor. Cada
+transferência final tem origem/destino diretos, preserva uma guarnição e atualiza
+o ledger antes da verificação de objetivos.
+`has_conquered_territory_this_turn` é público e permite determinar se a
+conclusão da movimentação deve abrir a fase de compra. O estado `finished`
+exige `is_finished=true` e não pode manter um jogador responsável por decisões.
 
 [`to_public_game_state`](../lib/war_game_engine/src/war_game_engine/state.py) e
 [`observe_player`](../lib/war_game_engine/src/war_game_engine/state.py) projetam
 o estado sem expor RNG, mãos ou objetivos de outros jogadores. O motor fornece
 [`validate_action`](../lib/war_game_engine/src/war_game_engine/engine.py),
-`legal_actions()` e transições puras para reivindicação e colocação de reforços;
-fases de combate e demais regras de turno permanecem no escopo da Fase 3.
+`legal_actions()` e transições puras para reivindicação, colocação, cálculo de
+reforços por turno, trocas, compra/descarte de cartas, encerramento de fases e
+avanço de turno. Combate valida e resolve uma confrontação após um resultado
+de chance explícito. Avaliadores tipados cobrem eliminação/fallback, territórios,
+guarnições e continentes. Cada ação relevante resolve `objective_check` antes
+da próxima decisão; a mão eliminada só é transferida quando a avaliação não
+encerra a partida. Vitórias simultâneas deixam o estado pendente para
+adjudicação, sem desempate inventado.
+
+`ChanceOutcome.outcome_source` identifica obrigatoriamente `simulation`,
+`site` ou `physical_board`. A simulação usa o stream interno e só aplica o
+resultado junto com o estado atualizado desse stream; resultados observados
+não podem avançá-lo. Combate aceita apenas faces explícitas compatíveis com o
+pedido — perdas agregadas não são transformadas em faces — e rejeita IDs de
+pedido ou evento já aplicados. O estado completo retém recibos de todos os
+outcomes; o público projeta apenas os recibos públicos. Replays também recusam
+IDs repetidos. As alterações são refletidas nos schemas de observação e replay
+`1.9.0` e `1.10.0`, respectivamente.
 
 Snapshots usam JSON canônico (UTF-8, chaves ordenadas, sem espaços variáveis e
 sem NaN) e SHA-256 do estado. A restauração confere hash e `replay_version`;
@@ -116,6 +150,16 @@ destinatários restritos e renumera os eventos; a reprodução rejeita versões
 incompatíveis ou divergências no hash final. Implementação em
 [`replay.py`](../lib/war_game_engine/src/war_game_engine/replay.py) e
 [`serialization.py`](../lib/war_game_engine/src/war_game_engine/serialization.py).
+
+`ReplayOutcome` classifica o encerramento do episódio: vitória oficial,
+eliminação individual, desistência, interrupção operacional ou truncamento de
+treinamento. Vitória oficial precisa coincidir com o vencedor do estado
+final; eliminação e desistência referenciam jogador existente, e eliminação
+precisa estar refletida no estado. Interrupções e truncamentos não podem
+atribuir vencedor. Um truncamento registra o tipo e o valor do limite atingido.
+Outcomes são opcionais para replays parciais; replays de estados já encerrados
+exigem o registro de vitória oficial. `ReplayExecutionResult` devolve essa
+classificação sem converter um limite artificial em vitória.
 
 ## Exemplos validados
 

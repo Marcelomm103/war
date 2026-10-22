@@ -697,15 +697,69 @@ Cobrir preparação, recebimento/troca, colocação, combate, ocupação, movime
 
 As transições terão guardas explícitas e testes.
 
+#### Registro de execução — 2026-10-22
+
+Implementada a máquina tipada de fases para reivindicação e colocação inicial,
+recebimento/troca, colocação de reforços, ataques, ocupação, movimentação,
+compra de carta, encerramento do turno e término. A colocação inicial agora
+inicia a segunda rodada com o primeiro jogador da ordem certificada. As ações
+de encerramento de fase validam a fase esperada; o fim da movimentação abre a
+compra somente após conquista; o avanço de turno pula jogadores eliminados,
+incrementa a rodada ao voltar ao início da ordem e limpa o controle de
+movimentação/conquista da vez. O estado terminal não aceita novas ações.
+
+Os schemas de ação, observação e replay foram atualizados para `1.1.0`, com
+JSON Schema e tipos TypeScript regenerados. Reforços e cartas, resolução de
+combate, ocupação, movimentação, compra efetiva e avaliação da vitória ainda
+dependem dos passos 3.2–3.8; a máquina não inventa desempate para vitórias
+simultâneas, que permanece pendente na especificação normativa.
+
+**Verificação:** suíte da engine — 106 testes aprovados; Ruff e mypy sem
+problemas; `npm run typecheck` da PWA aprovado.
+
+**Resultado do passo 3.1: concluído no escopo da máquina de fases e de suas
+transições/guardas.**
+
 ### 3.2. Implementar reforços e cartas
 
 - Calcular todos os pools.
 - Preservar restrições de destino.
 - Validar combinações de símbolos e coringas.
 - Aplicar progressão das trocas.
-- Tratar trocas obrigatórias.
+- Respeitar a troca opcional com cinco cartas e os descartes obrigatórios por limite de mão.
 - Tratar descarte, reembaralhamento e recebimento após eliminação.
 - Testar impactos sobre o turno em andamento.
+
+#### Registro de execução — 2026-10-22
+
+Implementados os pools de reforço por território e continente tanto na
+colocação inicial quanto no início de cada turno regular. Os bônus continentais
+mantêm os destinos restritos ao continente correspondente. Trocas usam três
+cartas distintas, aceitam três símbolos iguais ou diferentes com curingas,
+avançam o contador global pela tabela até a progressão ilimitada de +5 e
+geram um pool irrestrito de valor-base mais pools separados de +2 para cada
+território próprio representado.
+
+A troca continua opcional com cinco cartas, conforme a precedência normativa
+registrada na especificação. A compra única após conquista só ocorre depois do
+movimento final; o jogador escolhe um descarte quando a mão passa de cinco
+para seis. Cartas trocadas formam a única pilha reciclável; descartes por
+limite ficam em zona separada, sem destino inventado. Se não houver carta no
+monte nem na pilha de trocas, a compra falha explicitamente. A rotina de
+transferência após eliminação recebe as cartas e descarta aleatoriamente até
+cinco usando o stream de cartas; a integração com a transição de conquista
+fica para depois da adjudicação de objetivos no passo 3.6. Assim, cartas não
+são transferidas antes de decidir se a eliminação encerra a partida.
+
+As fases e ações de compra/descarte foram acrescentadas aos contratos; schemas
+de ação, observação e replay passaram para `1.2.0`, com JSON Schema e tipos
+TypeScript regenerados. A matriz de rastreabilidade e a especificação do turno
+registram a implementação e os limites normativos que continuam pendentes.
+
+**Verificação:** 135 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA aprovado.
+
+**Resultado do passo 3.2: concluído.**
 
 ### 3.3. Implementar combate rodada a rodada
 
@@ -716,14 +770,62 @@ As transições terão guardas explícitas e testes.
 - Comparar com um resolvedor independente.
 - Testar limites de tropas e dados.
 
+#### Registro de execução — 2026-10-22
+
+Implementado o fluxo de uma confrontação por ação. A validação exige origem
+própria com guarnição, alvo adversário adjacente e dados de ataque entre um e
+três, sem usar o último exército. `PendingCombat` fixa origem, alvo, dados
+escolhidos pelo atacante e quantidade defensiva obrigatória antes de emitir
+`ChanceRequest`; enquanto o resultado não chega, nenhuma nova ação é oferecida.
+
+`ChanceOutcome` exige faces públicas válidas e contagens compatíveis com o
+pedido. A resolução ordena os dados, aplica perda ao atacante em empate e
+ignora dados sem par. Uma batalha não inicia outra automaticamente: se a defesa
+sobrevive, o turno retorna à fase de ataque; se for eliminada, o estado entra
+em ocupação com a transferência máxima registrada para o passo 3.4.
+
+A distribuição exata enumera os espaços amostrais de todas as combinações de
+um a três dados por lado e retorna frações racionais. Testes comparam os nove
+pares de contagens a um resolvedor exaustivo independente. Os schemas de
+observação e replay passaram para `1.3.0`; a ação permaneceu em `1.2.0`, pois
+seu formato não mudou. JSON Schema e tipos TypeScript foram regenerados.
+
+**Verificação:** 163 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA e testes agregados de contratos aprovados.
+
+**Resultado do passo 3.3: concluído.** A transferência de propriedade,
+ocupação, cartas por eliminação e continuação de ataque após a ocupação seguem
+para o passo 3.4; avaliação de objetivos e vitória segue para o passo 3.6.
+
 ### 3.4. Implementar conquista e ocupação
 
 - Aplicar perdas e mudança de dono.
 - Exigir transferência legal.
 - Preservar guarnições obrigatórias.
 - Atualizar autoria de eliminação e efeitos sobre cartas.
-- Verificar vitória nos instantes corretos.
+- Encaminhar a verificação de vitória antes de oferecer outra decisão.
 - Não permitir que uma ação agregada ignore decisões intermediárias.
+
+#### Registro de execução — 2026-10-22
+
+Implementada a ação explícita de ocupação. Ela só aceita a origem e o alvo
+registrados pelo último combate, transfere uma quantidade entre 1 e o limite
+disponível e preserva uma guarnição na origem. A conquista muda a propriedade,
+marca a compra de carta da vez e registra quem eliminou o defensor. Missões de
+eliminação de terceiros são convertidas para conquistar 24 territórios.
+
+Toda ocupação entra em `objective_check`, com a próxima decisão bloqueada.
+Essa barreira garante que nem outra batalha nem o movimento final sejam
+oferecidos antes da avaliação imediata prevista na regra. O passo 3.6 resolverá
+essa fase, decidirá a vitória/fallback e só então integrará a transferência da
+mão do eliminado; portanto, cartas ainda não são transferidas antes dessa
+adjudicação.
+
+**Verificação:** 168 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA e testes agregados de contratos aprovados.
+
+**Resultado do passo 3.4: captura e ocupação concluídas, com a verificação de
+objetivos explicitamente bloqueando o turno até o passo 3.6.**
 
 ### 3.5. Implementar movimentação
 
@@ -731,6 +833,30 @@ As transições terão guardas explícitas e testes.
 - Rastrear tropas já movimentadas quando necessário.
 - Respeitar limites por fase e por território.
 - Não pressupor regras de fortificação de outras variantes.
+
+#### Registro de execução — 2026-10-22
+
+Implementada a movimentação final como ações diretas entre territórios próprios
+adjacentes do `MapSpec`. A validação rejeita rota multietapas, território
+adversário, origem igual ao destino, quantidade acima das tropas ainda
+movimentáveis e qualquer transferência que deixe a origem sem guarnição.
+
+`MovementControl` agrega contagens por rota. Tropas que chegaram a um território
+já contam como movimentadas; tropas originais ainda podem sair uma vez, inclusive
+pela mesma rota em uma ação separada. Cada operação atualiza o ledger e entra em
+`objective_check`, bloqueando outra transferência até o passo 3.6 resolver as
+condições de vitória. Nenhuma regra de fortificação de outra variante foi
+adicionada.
+
+O tipo de retomada da checagem de objetivos foi ampliado para retornar à fase
+de movimentação. Schemas de observação e replay passaram para `1.5.0`; JSON
+Schema e tipos TypeScript foram regenerados.
+
+**Verificação:** 175 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA e testes agregados de contratos aprovados.
+
+**Resultado do passo 3.5: movimentação concluída; adjudicação dos objetivos
+permanece explicitamente no passo 3.6.**
 
 ### 3.6. Implementar objetivos
 
@@ -745,6 +871,33 @@ Criar avaliadores tipados para todos os objetivos certificados:
 
 Testar autorreferência, alvo ausente, eliminação por terceiro e momento de conclusão.
 
+#### Registro de execução — 2026-10-22
+
+Criado um catálogo tipado para os 14 objetivos físicos: eliminar cor, controlar
+continentes exigidos (com terceiro continente adicional quando indicado),
+atingir 24 territórios e manter pelo menos 18 territórios com guarnição mínima
+de dois. A autorreferência usa apenas o fallback impresso na missão; alvos
+ausentes e IDs desconhecidos são erros explícitos.
+
+`objective_check` é resolvido automaticamente após reivindicações, cada
+colocação de uma tropa, cada resultado de combate, ocupação e transferência de
+movimento. Colocações agregadas foram limitadas a uma tropa por ação para não
+ignorar uma vitória intermediária. Eliminações convertem as missões de terceiros
+para 24 territórios antes da avaliação; a mão só é transferida depois de
+confirmado que não houve vitória, e a missão do vencedor só é revelada no estado
+público terminal. Se várias missões forem satisfeitas na mesma transição,
+`VictoryAdjudicationRequiredError` conserva o estado e lista os candidatos, sem
+inventar desempate.
+
+Os schemas de ação, observação e replay foram atualizados para `1.4.0`,
+`1.8.0` e `1.8.0`, respectivamente; JSON Schema e tipos TypeScript foram
+regenerados.
+
+**Verificação:** 196 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA e testes agregados de contratos aprovados.
+
+**Resultado do passo 3.6: concluído.**
+
 ### 3.7. Separar chance simulada e externa
 
 - Simulação amostra `ChanceOutcome`.
@@ -753,6 +906,23 @@ Testar autorreferência, alvo ausente, eliminação por terceiro e momento de co
 - Faces incompatíveis são rejeitadas.
 - Resultado agregado observado não será registrado como faces que ninguém viu.
 - O cliente jamais substituirá o dado real por um sorteio local.
+
+**Execução do passo 3.7:** `ChanceOutcome` agora exige a origem
+`simulation`, `site` ou `physical_board`. A simulação amostra faces pelo stream
+de combate e aplica o resultado junto com o estado atualizado do RNG; resultados
+observados são aceitos sem avanço do RNG, e a engine rejeita uma atualização
+aleatória acompanhando um resultado observado. O contrato de combate exige as
+faces exatas e a contagem solicitada, recusando perdas agregadas. Recibos com
+IDs de pedido/evento e origem são mantidos no estado completo; a projeção
+pública inclui apenas recibos públicos. Replays recusam IDs repetidos e a
+sanitização preserva a origem dos outcomes públicos. A PWA não sorteia dados
+localmente; o contrato aguarda o resultado fornecido pelo site/tabuleiro. Os
+schemas de observação e replay avançaram para `1.9.0`.
+
+**Verificação:** 201 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA e 3 testes agregados de contratos aprovados.
+
+**Resultado do passo 3.7: concluído.**
 
 ### 3.8. Tratar término e truncamento
 
@@ -767,6 +937,23 @@ Distinguir:
 **Não declarar vencedor por quantidade de territórios ao atingir um limite artificial.**
 
 **Critério de saída:** partidas completas para todas as configurações certificadas, com replays e efeitos normativos corretos.
+
+**Execução do passo 3.8:** o contrato `ReplayOutcome` distingue vitória
+oficial, eliminação individual, desistência, interrupção operacional e
+truncamento técnico, incluindo o limite atingido no caso do treinamento.
+Vitórias oficiais de replays precisam coincidir com o vencedor do estado;
+eliminação individual e desistência referenciam um jogador válido. Outcomes
+não oficiais só podem acompanhar estados sem vitória, e um estado marcado como
+`finished` agora exige vencedor oficial. `ReplayExecutionResult` devolve a
+classificação e a sanitização preserva-a nos replays públicos. Interrupção,
+desistência e truncamento não modificam territórios/tropas nem atribuem vitória;
+replays parciais podem permanecer sem classificação. O replay avançou para
+`1.10.0`.
+
+**Verificação:** 207 testes da engine aprovados; Ruff e mypy sem problemas;
+`npm run typecheck` da PWA e 3 testes agregados de contratos aprovados.
+
+**Resultado do passo 3.8: concluído.**
 
 ---
 

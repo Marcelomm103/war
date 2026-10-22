@@ -680,6 +680,15 @@ A semente permitirá reprodução pelo avaliador, mas não será observação da
 
 ---
 
+**Implementação dos passos 2.1–2.6 (2026-10-22):** catálogo canônico com
+proveniência; estados completos/públicos/individuais; validação e transições
+puras para reivindicação e colocação de reforços; streams PCG64 isolados;
+preparação reproduzível para 3–6 jogadores; snapshots com hash e restauração de
+RNG; replays completos e públicos sanitizados. Combate e demais transições de
+turno permanecem no escopo da Fase 3. O detalhamento e os limites da
+implementação estão em
+[war_game_engine/README.md](../lib/war_game_engine/README.md).
+
 ## Fase 3 — Regras completas e término
 
 ### 3.1. Implementar máquina de fases

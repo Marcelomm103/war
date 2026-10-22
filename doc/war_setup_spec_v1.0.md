@@ -82,13 +82,14 @@ Depois de todos os territórios receberem o exército inicial, o distribuidor re
 - Portanto, a primeira rodada não inclui ataques, deslocamento final nem carta por conquista. A posse inicial já cobre todos os territórios; as cartas voltam ao baralho antes de começar o jogo.
 - O total de reforços da primeira colocação é $R(T)$ mais os bônus dos continentes inteiros que o jogador possui no início de sua vez. Não há suporte para substituir essa soma por uma quantidade fixa de exércitos baseada no número de jogadores.
 
-## Implementação existente — somente diagnóstico
+## Implementação existente — diagnóstico e status
 
 Os protótipos do analyzer não certificam a preparação:
 
 - `initialize_players` restringe a contagem a 3–6, mas sorteia dentre azul, vermelho, amarelo, verde, cinza e roxo, em divergência com as seis cores físicas; não oferece a escolha por acordo prevista no manual.
 - [war_analyzer_gemini.py](../lib/war_analyzer/src/war_analyzer_gemini.py) filtra objetivos usando cinza/roxo e contém um objetivo padrão se o sorteio esgotar. Ambos os comportamentos são incompatíveis com as cartas físicas e não devem ser usados como regra.
-- Não foi encontrada implementação canônica que realize a sequência completa de distribuição das 42 cartas, escolha do primeiro jogador, colocação inicial, devolução/embaralhamento do baralho ou tratamento completo dos objetivos.
+- A implementação canônica do passo 2.5 está em [`prepare_game`](../lib/war_game_engine/src/war_game_engine/setup.py): para 3–6 participantes, realiza a filtragem/sorteio de objetivos, seleção reproduzível do distribuidor com desempate, distribuição das 42 cartas, devolução/embaralhamento do baralho de 44 cartas e criação dos pools e da ordem de colocação inicial. Os casos de 3–6 jogadores e as exceções de desempate/fallback têm testes em [`test_setup.py`](../lib/war_game_engine/tests/test_setup.py) e fixture em [`player_counts.json`](../lib/war_game_engine/tests/fixtures/setup/player_counts.json).
+- Esse passo cria o estado inicial e expõe decisões de colocação; não certifica combate, transições completas de turno nem reciclagem de descarte, que permanecem no escopo das fases posteriores do roadmap.
 
 Consulte a [matriz de rastreabilidade](war_rules_traceability_v1.0.md) para os IDs e casos de teste propostos. Esta especificação não executa esses testes.
 

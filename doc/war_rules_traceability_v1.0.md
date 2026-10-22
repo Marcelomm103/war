@@ -41,10 +41,11 @@ Os estados abaixo descrevem **a rastreabilidade/evidência da regra**, não cert
 
 ## Estado atual da implementação e dos testes
 
-- [war_game_engine/README.md](../lib/war_game_engine/README.md) contém uma descrição; não foi encontrada implementação da engine nem suíte de testes.
-- [war_AI/README.md](../lib/war_AI/README.md) contém uma descrição; não foram encontrados agentes, treinamento ou testes.
+- A Fase 2 foi implementada: [`war_game_engine`](../lib/war_game_engine/README.md) tem o catálogo canônico validado, estados completos/públicos/individuais, streams aleatórios isolados, setup reproduzível para 3–6 jogadores, ações de preparação, snapshots e replays completos/públicos. A suíte da engine e os testes agregados verificam esses fundamentos.
+- O escopo de transições desta fase cobre reivindicação e colocação de reforços; combate e as demais regras completas de turno continuam pendentes para a Fase 3. A conclusão da Fase 2 não certifica as regras listadas abaixo como implementadas.
+- [`war_AI`](../lib/war_AI/README.md) inclui o manifesto de reprodutibilidade e seus testes, mas ainda não fornece agentes ou treinamento.
 - `war_analyzer` contém protótipos de percepção, listas hardcoded de territórios/cartas/objetivos e ferramentas de imagem, não uma fonte central de transições do jogo. Não foi encontrada suíte de testes automatizados.
-- Assim, nenhum estado “Confirmado” nesta matriz deve ser interpretado como regra já implementada, executada ou testada na engine.
+- Assim, nenhum estado “Confirmado” nesta matriz deve ser interpretado como regra implementada: ele descreve a evidência normativa. Somente os testes e o escopo explicitamente indicados acima atestam comportamento executável.
 
 ## Matriz
 

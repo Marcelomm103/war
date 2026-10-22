@@ -443,7 +443,7 @@ As versões e licenças serão verificadas antes de serem travadas.
 
 | Grupo | Versões fixadas | Licenças declaradas |
 |---|---|---|
-| Build e engine/IA | setuptools 83.0.0; NumPy 2.2.6; PyTorch 2.14.1; PettingZoo 1.25.0; Gymnasium 1.1.1 | MIT; BSD-3-Clause; BSD-3-Clause; MIT; MIT |
+| Build e engine/IA | setuptools 83.0.0; Pydantic 2.14.1; NumPy 2.2.6; PyTorch 2.14.1; PettingZoo 1.25.0; Gymnasium 1.1.1 | MIT; MIT; BSD-3-Clause; BSD-3-Clause; MIT; MIT |
 | Testes | pytest 9.0.3; Hypothesis 6.130.2 | MIT; MPL-2.0 |
 | Qualidade | Ruff 0.17.1; mypy 2.4.0; mutmut 3.8.0 | MIT; MIT; BSD-3-Clause |
 | Serviço | FastAPI 0.158.2; Starlette 1.3.1; Uvicorn 0.34.0 | MIT; BSD-3-Clause; BSD-3-Clause |
@@ -569,10 +569,10 @@ listados. Nenhuma modernização específica do 3.11 foi necessária.
 três submódulos foram publicados antes da atualização dos gitlinks do
 agregador. A CI final passou em todos os quatro repositórios:
 
-- [Engine: Python 3.10/3.11, testes, lint, tipos e audit](https://github.com/Marcelomm103/war_game_engine/actions/runs/39673235348)
-- [IA: Python 3.10/3.11, testes, lint, tipos, audit e resolução do extra de treinamento](https://github.com/Marcelomm103/war_AI/actions/runs/39673235894)
-- [Analyzer: Python 3.11, OCR, audit e PWA](https://github.com/Marcelomm103/war_analyzer/actions/runs/39673235594)
-- [Agregador: contratos cruzados, audit Python, geração de contratos, build/audit frontend e scan de segredos](https://github.com/Marcelomm103/war/actions/runs/39673271858)
+- [Engine: Python 3.10/3.11, testes, lint, tipos e audit](https://github.com/Marcelomm103/war_game_engine/actions/runs/39682256295)
+- [IA: Python 3.10/3.11, testes, lint, tipos, audit e resolução do extra de treinamento](https://github.com/Marcelomm103/war_AI/actions/runs/39682256500)
+- [Analyzer: Python 3.11, OCR, audit e PWA](https://github.com/Marcelomm103/war_analyzer/actions/runs/39682255696)
+- [Agregador: contratos cruzados, audit Python, geração de contratos, build/audit frontend e scan de segredos](https://github.com/Marcelomm103/war/actions/runs/39682296974)
 
 A primeira execução remota detectou o `setuptools` vulnerável do runner; após
 fixar a atualização para 83.0.0, os audits passaram. A validação CPU estendida
@@ -584,16 +584,37 @@ quando esse runner estiver disponível.
 
 Cada execução registrará:
 
-- Commits.
-- Dependências.
-- Hardware e drivers.
-- Configuração completa.
-- Sementes.
-- Hashes de dados e pesos.
-- Normalizadores, otimizador e estado do treinamento.
+- Commits completos de todos os repositórios participantes; se o worktree
+  estiver sujo, o patch correspondente também será armazenado e hasheado.
+- Versões resolvidas de todas as dependências e hash do lockfile, quando houver.
+- Versões de Python/OS, arquitetura, CPU, aceleradores, drivers e runtimes.
+- Configuração completa do experimento.
+- Sementes separadas por stream, mantidas fora das observações do agente.
+- Hashes SHA-256 de datasets, pesos e normalizadores.
+- Configuração e estado do otimizador, mais checkpoint/estado completo de treino.
 - Configuração da banca e orçamento de inferência.
 
+O formato local versionado é `war_ai.reproducibility.RunManifest`. O
+`ReproducibilityStore` grava o manifesto JSON canônico por ID de execução e
+guarda cada artefato em `artifacts/sha256/`; verifica hash e tamanho antes de
+registrar ou reproduzir uma execução. Essa proveniência é administrativa e não
+faz parte dos contratos de transporte nem da observação da IA.
+
 **Critério de saída:** instalação limpa, contratos testados, CI básico aprovado e integração simulada sem dependências circulares.
+
+**Status do passo 1.6 (2026-10-21): implementado e validado localmente.**
+`RunManifest` usa schema versionado e estrito; `ArtifactStore` faz hash em
+streaming e valida tamanho/conteúdo; `ReproducibilityStore` grava manifestos
+canônicos de forma atômica, recusa sobrescrita divergente e verifica todos os
+artefatos referenciados. Foram adicionados captura de versões instaladas e de
+plataforma, além de testes de integridade, dirty patches, IDs e integração sem
+importação circular. O passo prepara a infraestrutura de proveniência; nenhum
+treinamento foi iniciado.
+
+**Verificação local:** 37 testes de engine, IA e integração passaram em Python
+3.10; Ruff e mypy passaram; o wheel da IA foi construído e instalado em alvo
+isolado, e o import do rastreador permaneceu sem carregar Torch. A CI remota da
+Fase 1.5 está verde; as alterações de 1.6 ainda não foram publicadas.
 
 ---
 

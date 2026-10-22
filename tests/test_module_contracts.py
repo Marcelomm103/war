@@ -61,7 +61,10 @@ def test_ai_import_is_headless_in_the_aggregate_environment() -> None:
     script = (
         "import importlib, sys; "
         "assert importlib.import_module('war_ai').__name__ == 'war_ai'; "
-        "importlib.import_module('war_game_engine'); "
+        "tracking = importlib.import_module('war_ai.reproducibility'); "
+        "assert tracking.RunManifest.__name__ == 'RunManifest'; "
+        "assert 'war_game_engine' not in sys.modules; "
+        "importlib.import_module('war_game_engine.contracts'); "
         "assert 'torch' not in sys.modules; "
         "assert 'cv2' not in sys.modules"
     )

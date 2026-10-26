@@ -46,6 +46,38 @@ Os estados abaixo descrevem **a rastreabilidade/evidência da regra**, não cert
 - [`war_AI`](../lib/war_AI/README.md) inclui o manifesto de reprodutibilidade e seus testes, mas ainda não fornece agentes ou treinamento.
 - `war_analyzer` contém protótipos de percepção, listas hardcoded de territórios/cartas/objetivos e ferramentas de imagem, não uma fonte central de transições do jogo. Não foi encontrada suíte de testes automatizados.
 - Assim, nenhum estado “Confirmado” nesta matriz deve ser interpretado como regra implementada: ele descreve a evidência normativa. Somente os testes e o escopo explicitamente indicados acima atestam comportamento executável.
+- **Cobertura do passo 4.1 (2026-10-22):** as regras executáveis pela engine
+  são vinculadas a testes com `pytest.mark.rule_id`; o teste
+  [`test_rule_coverage.py`](../lib/war_game_engine/tests/test_rule_coverage.py)
+  garante que todos os IDs da matriz, exceto a exclusão de escopo abaixo,
+  apareçam na coleta completa. `W1-TROOP-DENOMINATION-01` não é testado pela
+  engine: `army_count` já é uma contagem lógica, e converter fichas físicas
+  pertence ao futuro adaptador do analyzer. A verificação de
+  `W1-COMPONENTS-01` cobre o catálogo digital disponível, não as quantidades
+  físicas ainda não inventariadas de peças e dados. Os testes de
+  `W1-CARD-DISCARD-RECYCLE-01` garantem a separação das pilhas; a política de
+  reciclagem continua pendente de decisão normativa.
+- A comparação de combate usa uma enumeração exaustiva independente do resolver
+  de produção, mas não uma interpretação normativa independente; nenhuma outra
+  implementação de Risk é usada como oráculo. A revisão técnica independente
+  do passo 4.1 encontrou lacunas de cobertura que foram corrigidas. Ela não
+  substitui a revisão externa das regras e fontes físicas de alto risco,
+  que permanece pendente.
+- **Propriedades do passo 4.2 (2026-10-22):** a suíte
+  [`test_properties.py`](../lib/war_game_engine/tests/test_properties.py) usa
+  Hypothesis para verificar invariantes do estado e ações legais ao longo das
+  fases; conservação e contabilidade de tropas/cartas; exclusão de eliminados;
+  integridade das alterações territoriais; e adjudicação de vitória somente
+  quando um predicado de objetivo está satisfeito. A suíte foi validada junto
+  com todos os testes, Ruff e mypy.
+- **Testes metamórficos e de sigilo do passo 4.3 (2026-10-22):** a suíte
+  [`test_metamorphic.py`](../lib/war_game_engine/tests/test_metamorphic.py)
+  verifica equivalência ao renomear jogadores/cores com os objetivos
+  correspondentes, reindexar os registros do grafo mantendo território e
+  arestas, e alterar informação privada não observável. Um teste adicional em
+  [`test_replay.py`](../lib/war_game_engine/tests/test_replay.py) compara
+  snapshot/restauração e replay de transições geradas. Não se presume
+  intercambialidade de territórios com posições estratégicas diferentes.
 
 ## Matriz
 

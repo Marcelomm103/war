@@ -966,6 +966,34 @@ replays parciais podem permanecer sem classificação. O replay avançou para
 - Casos específicos para regras da primeira rodada, trocas, eliminações e vitória.
 - Outra implementação de Risk só será oráculo se sua equivalência for demonstrada.
 
+**Execução do passo 4.1 (2026-10-22):** os testes da engine agora usam
+`pytest.mark.rule_id`; `tests/test_rule_coverage.py` compara os marcadores com
+os IDs da matriz em uma coleta completa. Os 57 IDs executáveis pelo engine
+estão cobertos. `W1-TROOP-DENOMINATION-01` foi explicitamente excluído desta
+certificação porque conversão de fichas físicas pertence ao adaptador de visão,
+fora do modelo lógico de `army_count`.
+
+Foram adicionados casos independentes para a sequência de distribuição e o
+primeiro jogador em mesas de 3–6 pessoas; consumo e esgotamento de reservas
+iniciais; troca opcional com cinco cartas e bônus por cada carta territorial
+própria; limites dos dados defensivos e da ocupação; exemplo manual 10×4;
+continuação de ataque após captura; eliminação com mão exatamente igual a
+cinco cartas; predicados positivos e negativos dos objetivos; e vitória após
+ocupação e movimentação. A revisão técnica independente identificou sete
+lacunas nesses cenários; as sete foram corrigidas e verificadas pela suíte.
+Não foi usada outra implementação de Risk como oráculo: a distribuição de
+combate é conferida por enumeração exaustiva independente do resolver de
+produção, mas interpreta a mesma regra documentada. A revisão normativa
+externa das fontes físicas continua pendente conforme a matriz.
+
+**Verificação:** 225 testes da engine aprovados, incluindo a auditoria completa
+de `rule_id`; a auditoria é deliberadamente ignorada quando esse arquivo é
+executado sozinho, pois os demais testes não foram coletados. Ruff e mypy
+passaram.
+
+**Resultado do passo 4.1: concluído para as regras no escopo do engine.**
+Conversão física de denominações permanece pendente para a integração de visão.
+
 ### 4.2. Criar testes de propriedades
 
 Verificar continuamente:
@@ -978,6 +1006,20 @@ Verificar continuamente:
 - Integridade de alterações territoriais.
 - Vitória somente nas condições permitidas.
 
+**Execução do passo 4.2 (2026-10-22):** adicionada a suíte
+[`test_properties.py`](../lib/war_game_engine/tests/test_properties.py) com
+Hypothesis. As propriedades verificam ações legais nas 12 fases, invariantes
+de estado após transições, reservas e conservação de tropas em colocação e
+movimentação, contabilidade do bônus de troca, conservação das 44 cartas entre
+mãos e zonas do baralho, limites de mão após compra/descarte/eliminação,
+exclusão de jogadores eliminados na rotação e vitória pelo objetivo de 18
+territórios guarnecidos somente ao atingir seus limiares.
+
+**Verificação:** 245 testes da engine aprovados; 3 testes agregados aprovados;
+Ruff e mypy passaram.
+
+**Resultado do passo 4.2: concluído.**
+
 ### 4.3. Criar testes metamórficos e de sigilo
 
 - Permutar IDs/cores junto com seus objetivos preserva semântica.
@@ -985,6 +1027,21 @@ Verificar continuamente:
 - Snapshot/replay não muda resultado.
 - Mudar informação oculta, mantendo a mesma observação legítima, não altera observações ou máscaras.
 - Não exigir simetria de territórios que possuem posições estratégicas diferentes.
+
+**Execução do passo 4.3 (2026-10-22):** adicionados testes metamórficos para
+renomeação bijetiva de jogadores e cores com remapeamento das missões de
+eliminação, reordenação/rotação dos registros do mapa e orientação das arestas,
+snapshot/restore seguido de replay de uma transição gerada e troca de objetivos,
+mãos e estado aleatório ocultos dos jogadores não observados. As ações legais
+servem como máscara observável na API atual; não existe campo de máscara
+separado. As comparações preservam a identidade e as ligações territoriais
+canônicas; nenhuma simetria estratégica entre territórios distintos é
+pressuposta.
+
+**Verificação:** 250 testes da engine aprovados; 3 testes agregados aprovados;
+Ruff e mypy passaram.
+
+**Resultado do passo 4.3: concluído.**
 
 ### 4.4. Testar a qualidade dos testes
 
@@ -995,6 +1052,30 @@ Mutation testing deverá detectar, por exemplo:
 - Compra indevida de carta.
 - Movimento ilegal.
 - Vitória verificada no instante errado.
+
+**Execução do passo 4.4 (2026-10-22):** a campanha completa do mutmut 3.8.0
+foi executada sobre os 13 módulos da engine. Os casos representativos de
+desempate do combate, alteração dos valores de troca, compra de carta somente
+após conquista, movimentos ilegais e adjudicação imediata de vitória são
+exercitados e as mutações semânticas correspondentes são mortas. Os mutantes
+de comparação do resolver de combate (27/27) foram mortos. A campanha também
+revelou que ainda faltava testar a rejeição de movimento para território
+inexistente e a entrada `trade_number=0`; os dois testes foram adicionados e
+seus mutantes focados foram mortos.
+
+O resultado bruto reportou **3.542 mortos, 1.044 sobreviventes e 3 timeouts**
+(77,2% dos mutantes que terminaram). Muitos sobreviventes são alterações de
+mensagens diagnósticas ou equivalentes; ainda não há classificação completa
+dos sobreviventes. Portanto esse valor não é apresentado como mutation score
+de mutantes válidos e **não satisfaz** a meta de ≥90% do passo 4.5.
+
+**Verificação:** 252 testes da engine aprovados; 3 testes agregados aprovados;
+Ruff e mypy passaram. A descoberta do roadmap/fixtures funciona na cópia
+`mutants/` criada pelo mutmut, e as execuções focadas dos dois novos limites
+foram aprovadas.
+
+**Resultado do passo 4.4: concluído para os mutantes representativos;**
+classificação de sobreviventes e meta quantitativa permanecem no passo 4.5.
 
 ### 4.5. Executar stress
 
@@ -1008,6 +1089,85 @@ Metas iniciais:
 - Mutation score ≥90% dos mutantes válidos avaliados.
 
 Truncamentos e crashes serão registrados, não apresentados como partidas concluídas.
+
+**Execução parcial do passo 4.5 (2026-10-23):** criado
+[`scripts/stress_engine.py`](../lib/war_game_engine/scripts/stress_engine.py),
+com sementes independentes por partida, política aleatória legal, validação
+dos estados após transições, replay completo, contadores por fase e workers
+paralelos determinísticos. Uma campanha serial de 1.000 tentativas/100.000
+transições registrou 0 crashes, 0 violações de invariantes e 0 divergências de
+replay; as partidas foram truncadas pelo limite e não contam como concluídas.
+Uma campanha paralela de **10.000 partidas tentadas e 1.000.000 transições**
+(12 workers, seed `20261028`, limite 100 transições por partida) levou 766,83 s
+e registrou 0 crashes, 0 violações e 0 divergências; as 10.000 partidas foram
+truncadas e não contam como concluídas. Testes de fumaça verificam a distinção
+entre concluídas e truncadas, o replay e determinismo entre execução serial e
+paralela.
+
+A cobertura de arcos com `coverage.py --branch` foi **95,1271%** no escopo
+mensurado (`engine`, combate, objetivos, reforços e preparação), calculada
+como 449/472 arcos. Três guardas inalcançáveis por operações válidas são
+explicitamente excluídas: múltiplas colocações (o contrato permite apenas uma
+por ação), colocação acima do pool (cada ação consome uma tropa e os pools são
+positivos) e pool com zero exércitos (também proibido pelo contrato).
+
+A campanha integral intermediária de mutation testing registrou **3.711
+mortos, 875 sobreviventes e 3 timeouts** (80,9% bruto entre os mutantes
+terminados). Após ela, foram adicionados testes para invariantes de estado,
+transições, contratos e replay; essa medição foi substituída pela campanha
+final abaixo. Na triagem intermediária, sobreviventes não foram presumidos
+equivalentes, incluindo mudanças em literais de erro.
+
+**Campanha ampliada (2026-10-23):** 100.000 partidas tentadas × limite de 100
+transições = **10.000.000 de transições**, 12 workers, seed `20261027`, em
+4.070,05 s. Resultado: 100.000 truncamentos, **0 partidas concluídas**, 0
+crashes, 0 violações de invariantes e 0 divergências em 100.000 replays. O
+limite por episódio foi aplicado e cada truncamento foi reportado
+separadamente, não como vitória.
+
+**Campanha de cardinalidade (2026-10-23):** 1.000.000 de partidas tentadas ×
+limite de 10 transições, 12 workers, seed `20261031`, em 4.255,02 s. Foram
+verificadas 10.000.000 de transições, com 1.000.000 truncamentos, **0 partidas
+concluídas**, 0 crashes, 0 violações e 0 divergências em 1.000.000 replays.
+Todas as transições desse lote ocorreram em `initial_placement`; ele comprova
+cardinalidade e invariantes da preparação, não execução completa das fases de
+turno. As duas campanhas ampliadas totalizam 20 milhões de transições sem
+falhas, mantendo truncamentos separados de partidas concluídas.
+
+O truncamento normal do runner ocorre apenas quando o estado ainda não é
+terminal ao atingir `--max-transitions-per-game`. Cada ação aplicada ou
+resultado de combate resolvido conta como uma transição; exceções durante
+inicialização/transição são crashes, não truncamentos, e não há limite de
+tempo de parede. Assim, o limite 10/100 das campanhas anteriores explica os
+episódios interrompidos sem indicar falha da engine.
+
+**Diagnóstico de conclusão (2026-10-23):** uma partida, seed `20261023`,
+limite 5.000, concluiu em **1.618 transições** e 7,11 s, sem crash, violação
+ou divergência de replay. O episódio percorreu preparação, reforço,
+colocação, ataque, ocupação, movimentação, compra de carta e fim de turno.
+
+**Campanha longa paralela (2026-10-23):** 100 partidas tentadas, limite 5.000
+transições, seed `20261023`, 12 workers, em 614,53 s. Resultado: **18 partidas
+concluídas, 82 truncadas**, 440.807 transições, 100 replays verificados, 0
+crashes, 0 violações de invariantes e 0 divergências. Houve atividade em todas
+as fases do turno; os episódios truncados atingiram o limite por partida e
+foram mantidos separados dos concluídos.
+
+**Verificação final do passo 4.5:** 444 testes da engine e 3 testes agregados
+passaram; Ruff e mypy passaram. A cobertura de ramificações no escopo declarado
+foi 450/472 (**95,3390%**). A campanha final de mutation testing registrou
+**4.134 mortos, 452 sobreviventes e 3 timeouts** em 4.589 mutantes. O score
+conservador, contando também os três timeouts como não mortos e sem excluir
+nenhum sobrevivente como equivalente, é **4.134/4.589 = 90,0850%** (90,1439%
+entre os mutantes terminados), acima do gate de 90%. Os timeouts continuam
+identificados nos geradores aleatórios e na escolha do distribuidor; não foram
+convertidos em mortes.
+
+**Status do passo 4.5: concluído.** Foram tentados 1 milhão de episódios no
+lote de cardinalidade, verificadas 20 milhões de transições nessas campanhas,
+e a amostra longa confirmou partidas completas e cobertura de fases sem
+falhas. Truncamentos continuam contabilizados à parte. O passo 4.6 ainda não
+foi iniciado; aguardar autorização do usuário antes de avançar.
 
 ### 4.6. Implementar um humano contra IAs
 

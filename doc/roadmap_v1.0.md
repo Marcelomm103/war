@@ -1534,6 +1534,18 @@ encontra duas cópias de metadados `war-game-engine` (site-packages e
 - Testes de clipping, razões de importância, entropia e normalização.
 - Testes de reset da memória e retorno após término.
 
+**Implementação do passo 6.1:** criado `war_ai.rl.ppo` com ator-crítico local,
+política autoregressiva sobre tokens com máscara de prefixo, variantes
+feedforward/GRU/LSTM, amostragem de ações legais, objetivo PPO clipado,
+normalização de vantagens e GAE que distingue término de truncamento.
+
+**Verificação do passo 6.1:** 16 testes RL passaram; Ruff e mypy passaram.
+Os testes cobrem clipping e razões de importância, entropia, padding,
+normalização, rollouts mascarados, reset GRU/LSTM e bootstrap após término ou
+truncamento.
+
+**Status do passo 6.1: concluído.**
+
 ### 6.2. Demonstrar aprendizado em tarefas pequenas
 
 Treinar e avaliar:
@@ -1547,6 +1559,24 @@ Treinar e avaliar:
 
 Em subproblemas enumeráveis, comparar com solução exata.
 
+**Implementação do passo 6.2:** criada a suíte `war_ai.rl.small_tasks`. Os seis
+cenários geram candidatos por `legal_actions`, aplicam máscaras do
+`StructuredActionCodec` e treinam PPO no modelo da fase 6.1. Combate usa a
+distribuição exata de dados; trocas e conclusão de objetivo avaliam transições
+reais do motor. Colocação, ocupação e movimento usam micro-objetivos locais
+enumeráveis. A suíte também está disponível como `python -m
+war_ai.rl.small_tasks`.
+
+**Verificação do passo 6.2:** com 100 atualizações, batch 32 e seeds 2026–2031,
+as seis políticas atingiram o ótimo enumerado. Os retornos esperados foram:
+colocação `0,9998/1`; ataque `0,2627/0,2627`; ocupação `0,9998/1`;
+movimentação `0,9997/1`; trocas `11,9993/12`; objetivo `0,9998/1`.
+`test_small_tasks` verifica aprendizado, seleção exclusivamente legal e
+comparação com a solução exata. Esses microcenários não são partidas completas
+nem entram na homologação final.
+
+**Status do passo 6.2: concluído.**
+
 ### 6.3. Introduzir currículo
 
 - Cenários táticos.
@@ -1557,12 +1587,51 @@ Em subproblemas enumeráveis, comparar com solução exata.
 
 Cenários simplificados nunca entrarão na homologação do WAR completo.
 
+**Implementação do passo 6.3:** criado `war_ai.rl.curriculum` com três níveis:
+microtarefas táticas, estados intermediários contract-valid (ataque, ocupação,
+movimento, troca e reivindicação de objetivo) e partidas completas. A progressão
+é controlada por avaliação mínima e limiar de domínio. O conjunto de adversários
+se expande de heurísticas básicas para políticas de objetivo, continente,
+eliminação e planejamento exato. `War1AECEnv` agora aceita uma fábrica de
+estado inicial, validada quanto a regraset, mapa completo, jogadores, decisão
+ativa e estado restaurável de aleatoriedade.
+
+`FullGameReplayReservoir` conserva partidas oficiais concluídas por amostragem
+reservoir e só aceita resultados da etapa de jogo completo, com vitória oficial
+e snapshot no início de uma partida WAR. A arena continua iniciando jogos
+completos independentemente; identificadores de microtarefas/estados
+intermediários não são elegíveis para homologação.
+
+**Verificação do passo 6.3:** 57 testes integrados passaram, cobrindo avanço do
+currículo, atribuição dos adversários, inicialização dos cinco estados
+intermediários com ações legais, rejeição de fábrica inconsistente e retenção/
+rejeição de amostras completas. Ruff e mypy passaram.
+
+**Status do passo 6.3: concluído.**
+
 ### 6.4. Iniciar self-play histórico
 
 - Treinar contra snapshots e estilos variados.
 - Variar assento, cor, missão e quantidade de jogadores.
 - Não usar apenas a versão atual.
 - Não compartilhar segredos entre instâncias.
+
+**Implementação do passo 6.4:** criado `war_ai.rl.self_play` com um league que
+mantém snapshots históricos imutáveis identificados por geração, estilo e
+SHA-256, além dos baselines. Cada partida inclui pelo menos um snapshot
+histórico e um estilo baseline; o pool mantém checkpoints de idades variadas.
+As campanhas cobrem mesas de 3–6 jogadores e rotacionam a política atual por
+todos os assentos, variando a cor; seeds distintos variam as missões, registradas
+por assento nos resultados da arena. O executor usa `run_arena`, que instancia
+políticas e RNGs por assento e expõe somente a observação legítima do jogador.
+
+**Verificação do passo 6.4:** 5 testes passaram, cobrindo arquivo de snapshots,
+rejeição de versões futuras/sem hash, promoção da política atual, rotação de
+todos os assentos e cores, variação de missões e execução smoke de 18 partidas
+truncadas pela arena. Ruff e mypy passaram. O smoke test confirma o agendamento
+e o isolamento; não representa treinamento prolongado nem taxa de vitória.
+
+**Status do passo 6.4: concluído.**
 
 ### 6.5. Registrar e reproduzir treinamento
 
@@ -1573,11 +1642,50 @@ Cenários simplificados nunca entrarão na homologação do WAR completo.
 - Throughput e recursos.
 - Checkpoints com estado completo de retomada.
 
+**Implementação do passo 6.5:** criado `war_ai.rl.telemetry` com journal JSONL
+append-only, acumulador que separa `official_reward` de `shaping_reward`, curvas
+por objetivo/mesa, truncamentos, losses, KL, entropia, gradiente, throughput e
+uso de memória/accelerator. O ambiente Gym expõe no reset o objetivo e tamanho
+da mesa para indexação. `War1AECEnv` e `War1GymEnv` agora exportam/importam o
+estado de partida, histórico/replay e RNGs necessários para retomada.
+
+`war_ai.rl.checkpoint` persiste pesos, otimizador e estado explícito de
+ambiente, rollout, recorrência, currículo e journal no `ArtifactStore`, além
+dos RNGs Python, NumPy, torch CPU/CUDA e geradores nomeados. A restauração
+verifica os hashes antes de carregar; as referências podem integrar um
+`RunManifest`.
+
+**Verificação do passo 6.5:** 76 testes integrados passaram; Ruff e mypy
+passaram. O teste preexistente `test_dependency_capture_returns_canonical_installed_versions`
+foi excluído nesta execução porque o ambiente contém duas distribuições
+instaladas `war-game-engine`; a falha está no inventário do ambiente e não foi
+alterada. A retomada foi testada comparando o próximo passo de uma partida Gym,
+os pesos/estado do otimizador e os fluxos RNG antes e depois do checkpoint.
+
+**Status do passo 6.5: concluído.**
+
 ### 6.6. Repetir por sementes
 
 - Pelo menos 10 seeds para configurações promovidas.
 - Avanço condicionado a aprendizado reproduzível e ganho estatístico.
 - Nenhum modelo será considerado final por atingir determinado número de timesteps.
+
+**Implementação do passo 6.6:** criado `war_ai.rl.seed_evaluation` com geração
+de avaliações pareadas por seed, rotação da política candidata por todos os
+assentos e comparação da taxa de vitória oficial contra um baseline fixo.
+Resultados truncados/falhos são rejeitados. `assess_promotion` exige no mínimo
+10 seeds, melhora em pelo menos 80% delas e significância no teste exato de
+sinais pareados unilateral (`p < 0,05` por padrão); o gate não recebe timesteps.
+
+**Verificação do passo 6.6:** 80 testes passaram e 1 teste de inventário foi
+deselecionado; a suíte cobre o piso de 10 seeds, significância, comparação
+pareada e rotação por assento. Ruff e mypy passaram. O teste preexistente foi
+deselecionado porque o ambiente contém metadados duplicados de
+`war-game-engine`. Não foi executada uma campanha real de 10 seeds: ainda não
+há checkpoint PPO treinado em partidas completas para avaliar. O runner exige
+esse checkpoint e só aceita resultados oficiais concluídos.
+
+**Status do passo 6.6: concluído.**
 
 **Critério de saída:** primeiro agente treinável e exportável, capaz de completar partidas legais.
 

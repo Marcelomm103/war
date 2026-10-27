@@ -1166,8 +1166,7 @@ convertidos em mortes.
 **Status do passo 4.5: concluído.** Foram tentados 1 milhão de episódios no
 lote de cardinalidade, verificadas 20 milhões de transições nessas campanhas,
 e a amostra longa confirmou partidas completas e cobertura de fases sem
-falhas. Truncamentos continuam contabilizados à parte. O passo 4.6 ainda não
-foi iniciado; aguardar autorização do usuário antes de avançar.
+falhas. Truncamentos continuam contabilizados à parte.
 
 ### 4.6. Implementar um humano contra IAs
 
@@ -1185,6 +1184,28 @@ Runner/CLI deverá aceitar:
 
 A engine conhecerá `AgentProtocol`, não implementações concretas da IA.
 
+**Implementação do passo 4.6:** adicionado o runner `war-play`, com um assento
+humano, modelos carregados por fábricas `module:factory` e configurações
+compartilhadas ou específicas por assento. Compatibilidade de
+`AgentProtocol`, schema/encoding de observação e ação, orçamento de decisão,
+memória por jogador e RNG de política independente são verificados pelo runner.
+Os agentes recebem somente `PlayerObservation` e ações legais. A interface
+textual mostra o estado público, ações legais e apenas a missão/cartas do
+humano. Snapshots completos salvam estado, RNG, configurações e memórias para
+retomada; são privados por conterem dados ocultos de todos os assentos. Como a
+engine não prevê escolha defensiva fora do turno, os dados do defensor são
+resolvidos pela chance simulada existente.
+
+**Verificação do passo 4.6:** 453 testes da engine e 3 testes agregados
+aprovados; Ruff e mypy passaram. O módulo e o executável instalado `war-play`
+respondem ao `--help`, e o teste de retomada reproduz estado, RNG e memória do
+agente. Nenhuma política concreta foi adicionada à engine; nesta etapa, o
+runner integra modelos externos via `AgentProtocol`.
+
+**Status do passo 4.6: concluído.**
+
+Limite atual: não há política concreta de jogo no pacote war_AI; é necessário fornecer um plugin module:factory compatível.
+
 ### 4.7. Otimizar sem alterar regras
 
 Medir:
@@ -1199,6 +1220,64 @@ Backends acelerados exigirão comparação diferencial com a referência Python.
 
 **Critério de saída:** engine certificada, modo humano funcional e desempenho mensurado.
 
+**Implementação do passo 4.7 (2026-10-27):** criado
+[`scripts/benchmark_engine.py`](../lib/war_game_engine/scripts/benchmark_engine.py)
+para medir throughput com a campanha de stress existente, custo de cópia,
+memória Python rastreada, validação de estado/ação e latência/perfil de geração
+de ações por fase. Os cenários são semeados; fases não alcançáveis diretamente
+pela preparação normal são identificadas como sintéticas. A campanha separa
+partidas concluídas de truncadas e inclui replay completo, invariantes e
+transições; os microbenchmarks de cada fase também validam todas as ações
+geradas pela API de referência.
+
+**Otimização sem mudança de regras:** a geração deixou de validar repetidamente
+cada candidata de colocação, ataque e movimento; os pré-requisitos comuns
+continuam validados e as condições individuais são construídas no próprio
+gerador. Trocas validam o primeiro conjunto e os demais passam pela mesma
+verificação de combinação; o catálogo de cartas é calculado uma vez
+por geração. As assinaturas SHA-256 das ações em 11 fases são idênticas às da
+referência pré-otimização, e todas as ações geradas continuam aceitas por
+`validate_action()`. Não foi introduzido backend acelerado nem alterado schema
+ou regra.
+
+**Medição comparável:** CPython 3.11.17, WSL2, seed `20261023`, 1 jogo,
+limite 5.000 transições; ambos os runs terminaram o jogo em 1.618 transições,
+com um replay verificado, zero truncamentos, crashes, violações ou divergências.
+O baseline levou 4,531248 s (**357,08 transições/s; 0,2207 jogos concluídos/s**);
+o run otimizado levou 3,848289 s (**420,45 transições/s; 0,2599 jogos
+concluídos/s**), aumento medido de aproximadamente **17,75%** no throughput.
+Em 300 amostras por microbenchmark, a mediana da geração caiu de 160,355 para
+44,571 µs na colocação inicial, 158,615 para 45,629 µs na colocação de reforço,
+40,459 para 21,597 µs no ataque e 101,847 para 33,759 µs no cenário sintético
+de troca com cinco cartas. A validação de estado ficou em 55,276 µs de mediana
+(p95 80,886 µs); validar uma ação legal de ataque, 5,809 µs (p95 6,247 µs).
+
+**Memória e cópia:** o estado inicial manteve 45.166 bytes rastreados e teve
+pico de 61.374 bytes durante setup; sua representação JSON canônica tem 6.056
+bytes. A cópia rasa levou 0,802 µs de mediana e a profunda 133,069 µs; estes
+valores de memória não incluem alocações nativas. O perfil restante destaca a
+construção/validação Pydantic e as combinações de cartas como custos locais a
+acompanhar, sem justificar um backend alternativo nesta etapa.
+
+**Campanha complementar:** 3 episódios tentados, 11.618 transições e 46,513895
+s (**249,77 transições/s**); 1 jogo concluído e 2 truncados pelo limite de 5.000,
+com 3 replays verificados e zero crashes, violações ou divergências. A taxa de
+jogos concluídos deste lote é mantida separada e não é comparada ao caso de um
+jogo completo.
+
+Relatórios JSON reprodutíveis:
+[baseline](../lib/war_game_engine/benchmarks/phase-4.7-reference-2026-10-27.json),
+[otimizado](../lib/war_game_engine/benchmarks/phase-4.7-optimized-2026-10-27.json)
+e [campanha de três episódios](../lib/war_game_engine/benchmarks/phase-4.7-campaign-2026-10-27.json).
+
+**Verificação do passo 4.7:** 454 testes da engine e 3 testes agregados
+passaram; Ruff e mypy passaram. A campanha completa concluiu com replay
+verificado; no lote de três tentativas, os dois truncamentos permaneceram
+separados dos jogos concluídos, sem crash, violação de invariantes ou divergência.
+
+**Status do passo 4.7: implementação e medição concluídas.** A próxima fase
+não foi iniciada.
+
 ---
 
 ## Fase 5 — Ambiente RL, ações, baselines e arena
@@ -1211,6 +1290,25 @@ Backends acelerados exigirão comparação diferencial com a referência Python.
 - Testes oficiais de API e seeding.
 - Paralelismo entre partidas, não ações simultâneas fictícias dentro de uma mesa.
 
+**Implementação do passo 5.1:** criado
+[`War1AECEnv`](../lib/war_AI/src/war_ai/envs/war1_aec.py), com seleção baseada
+no jogador de decisão da engine, índices dinâmicos para a lista completa de
+ações legais, máscaras, observações privadas por jogador, recompensas de
+vitória oficial e limpeza AEC de agentes eliminados. Resultados de combate são
+resolvidos pela engine antes da próxima decisão; partidas continuam sequenciais.
+A codificação numérica completa foi adicionada no passo 5.3, registrado abaixo.
+
+**Verificação do passo 5.1:** 6 testes do ambiente passaram, incluindo os
+checkers oficiais PettingZoo `api_test` e `seed_test`; Ruff e mypy passaram. O
+wheel da engine inclui o marcador PEP 561 `py.typed`. A suíte agregada teve 19
+testes aprovados e uma falha preexistente em
+`test_dependency_capture_returns_canonical_installed_versions`: o ambiente
+encontra duas cópias de metadados `war-game-engine` (site-packages e
+`src/war_game_engine.egg-info`). Essa falha não é causada pela implementação e
+não alterei a coleta de dependências.
+
+**Status do passo 5.1: concluído.**
+
 ### 5.2. Implementar adaptador Gymnasium focal
 
 - Um jogador recebe decisões.
@@ -1218,6 +1316,22 @@ Backends acelerados exigirão comparação diferencial com a referência Python.
 - Registrar duração semântica entre decisões.
 - Tratar corretamente `terminated` e `truncated`.
 - Não confundir eliminação com simples ausência temporária de ação.
+
+**Implementação do passo 5.2:** criado
+[`War1GymEnv`](../lib/war_AI/src/war_ai/envs/gymnasium_env.py), com uma política
+explícita por adversário, avanço da mesa até a próxima decisão focal, streams
+de política reproduzíveis por assento e duração em decisões AEC reais. A duração
+inclui a ação focal e decisões ativas dos adversários, mas exclui limpeza de
+agentes mortos e resultados de chance resolvidos internamente. A eliminação
+focal e o término oficial retornam `terminated`; apenas o orçamento opcional de
+decisões retorna `truncated`.
+
+**Verificação do passo 5.2:** 6 testes do adaptador passaram, incluindo o
+checker oficial Gymnasium, reset semeado, duração, truncamento e eliminação da
+pessoa focal enquanto a partida continua. Em conjunto com os testes AEC,
+passaram 12 testes; Ruff e mypy passaram.
+
+**Status do passo 5.2: concluído.**
 
 ### 5.3. Projetar observações
 
@@ -1234,6 +1348,23 @@ Usar:
 
 Normalização não poderá descartar quantidades legais.
 
+**Implementação do passo 5.3:** criado o encoder versionado
+[`War1ObservationEncoder`](../lib/war_AI/src/war_ai/envs/observations.py), com
+grafo certificado, continentes, ocupação, máscara de seis assentos, fase e
+participantes, objetivo/mão próprios, pools de reforço e histórico público. Os
+vetores logarítmicos são apenas features auxiliares: tropas, reforços, totais,
+turno e versão de estado também usam bytes big-endian com offsets, preservando
+inteiros arbitrariamente grandes sem clipping. A trilha registra ações e
+resultados públicos de combate com tempos lógicos determinísticos; IDs privados
+de cartas não entram nela. `engine_observation` continua disponível como
+contrato estruturado exato.
+
+**Verificação do passo 5.3:** 15 testes AEC/Gymnasium passaram, incluindo
+round-trip de inteiros acima de 256 bits, pools, graph/ownership, histórico
+serializado, API/seeding PettingZoo e checker Gymnasium; Ruff e mypy passaram.
+
+**Status do passo 5.3: concluído.**
+
 ### 5.4. Projetar espaço de ações completo
 
 Preferir decodificação estruturada:
@@ -1249,6 +1380,28 @@ Preferir decodificação estruturada:
 
 Evitar um `Discrete(10000)` arbitrário que exclua estratégias válidas.
 
+**Implementação do passo 5.4:** criado
+[`StructuredActionCodec`](../lib/war_AI/src/war_ai/envs/actions.py). Cada
+sequência começa com o tipo de ação, serializa os parâmetros estruturados e as
+quantidades inteiras em bytes UTF-8 de comprimento variável, inclui um
+separador, o ID da ação legal e uma confirmação explícita. O vocabulário de 268
+tokens é fixo, mas não limita quantidade ou comprimento. Máscaras de prefixo
+dinâmicas são derivadas exclusivamente das ações legais atuais. AEC e
+Gymnasium mantêm o índice discreto compatível e também oferecem `step_tokens()`;
+o decoder só encaminha à engine uma sequência completa que corresponda a uma
+ação legal, sem transição durante o prefixo. A enumeração legal do motor para
+movimento expõe todos os valores de 1 a `min(exércitos não movidos,
+exércitos na origem − 1)`, sem teto arbitrário.
+
+**Verificação do passo 5.4:** 22 testes AEC/Gymnasium/codec passaram, incluindo
+round-trip de todas as ações legais iniciais, todos os dez tipos semânticos,
+quantidade de 4096 bits, máscaras condicionais, rejeição de prefixos incompletos
+e ausência de mutação antes da confirmação. Ruff e mypy passaram. Também
+passaram 245 testes do motor (`test_engine`, propriedades e metamórficos) após
+completar a enumeração de movimentos.
+
+**Status do passo 5.4: concluído.**
+
 ### 5.5. Implementar losses compatíveis
 
 - Probabilidade conjunta da ação composta.
@@ -1258,6 +1411,21 @@ Evitar um `Discrete(10000)` arbitrário que exclua estratégias válidas.
 - Testes de gradientes e de ações nas fronteiras.
 
 Não presumir que recorrência, masking e ações estruturadas funcionem apenas combinando wrappers prontos.
+
+**Implementação do passo 5.5:** criado `war_ai.rl.losses` com
+`masked_log_softmax`, log-probabilidade conjunta por sequência, entropia
+categórica mascarada e KL condicional sobre os mesmos suportes legais.
+Posições de padding são excluídas, tokens ilegais e posições ativas sem ações
+legais são rejeitados. `PerPlayerRecurrentMemory` armazena hidden e, opcionalmente,
+cell em eixos separados por jogo/assento, com seleção, atualização,
+reset seletivo e detach para fronteiras de rollout.
+
+**Verificação do passo 5.5:** 8 testes passaram, cobrindo máscaras reais do
+codec AEC, probabilidade conjunta, entropia/KL, gradientes, valores de token nas
+fronteiras, padding vazio e isolamento/gradientes de memória GRU/LSTM. Ruff e
+mypy passaram.
+
+**Status do passo 5.5: concluído.**
 
 ### 5.6. Definir recompensa
 
@@ -1271,6 +1439,20 @@ Não presumir que recorrência, masking e ações estruturadas funcionem apenas 
 
 Não premiar ataques ou territórios indefinidamente como substituto da vitória.
 
+**Implementação do passo 5.6:** adicionado `official_win_reward` como métrica
+canônica (`1` vitória, `0` não vitória) e `PotentialRewardShaper` opcional,
+calculado somente com estado público e objetivo próprio. A potencial é limitada
+a `0,05`, usa $\gamma=1$, e é zero em término; truncamentos preservam a potencial
+do próximo estado. O adaptador Gymnasium mantém recompensa oficial e shaping em
+campos separados de `info`; nenhum shaping é aplicado por padrão.
+
+**Verificação do passo 5.6:** 4 testes específicos passaram, cobrindo vitória,
+não vitória, progresso para os três tipos de objetivo, limite da potencial,
+zero terminal e comparação entre shaping ativado/desativado. A suíte focal
+AEC/Gymnasium/codec/losses/reward teve 34 aprovações; Ruff e mypy passaram.
+
+**Status do passo 5.6: concluído.**
+
 ### 5.7. Construir baselines
 
 - Aleatório legal.
@@ -1283,6 +1465,21 @@ Não premiar ataques ou territórios indefinidamente como substituto da vitória
 
 O aleatório servirá para sanidade e currículo, **não para facilitar a homologação final**.
 
+**Implementação do passo 5.7:** criado `war_ai.baselines` com as sete políticas
+listadas. Todas consomem `PlayerObservation.legal_actions` e `action_mask`;
+objetivo, fronteiras e continentes usam somente informações permitidas. O
+planejador calcula probabilidade de conquista e perdas esperadas por round com
+`enumerate_combat_loss_distribution`, sem reimplementar os dados. A política
+aleatória usa o RNG por assento e permanece explicitamente separada da
+homologação final.
+
+**Verificação do passo 5.7:** 6 testes passaram, cobrindo seleção sempre legal,
+reprodutibilidade do aleatório, integração de políticas no Gym focal e
+comparação exata com a distribuição certificada de combate; Ruff e mypy
+passaram.
+
+**Status do passo 5.7: concluído.**
+
 ### 5.8. Construir arena
 
 - Modelos congelados por assento.
@@ -1293,7 +1490,37 @@ O aleatório servirá para sanidade e currículo, **não para facilitar a homolo
 - Estatística por adversário, missão e mesa.
 - Testes com resultados conhecidos.
 
-**Critério de saída:** ambiente RL confiável, ações completas, baselines e avaliação auditável.
+**Implementação do passo 5.8:** criado
+[`war_ai.arena`](../lib/war_AI/src/war_ai/arena.py), com specs de política e
+fábricas executadas por assento. Cada instância recebe seed e RNG independentes;
+fábricas que reutilizam a mesma callable entre assentos são classificadas como
+falha, sem fallback de ação. Configuração e resultado registram a atribuição de
+políticas, digest declarado de checkpoint, seeds, orçamento de decisões,
+orçamento medido por decisão, duração e resultado. Vitórias oficiais são
+separadas de truncamentos pelo limite de ações e de falhas de factory, política,
+ação ilegal, tempo e engine.
+
+O AEC agora permite registrar um ID de jogo e constrói replays completos com
+snapshot inicial, ações e resultados de chance em sequência contígua. A arena
+inclui esses replays nos resultados, inclusive em truncamentos e falhas
+operacionais. As métricas são agregadas por política, objetivo efetivo e tamanho
+da mesa; contagens de partidas são distintas, enquanto vitórias e taxas são
+calculadas por assento concluído. Replays completos incluem estado privado e
+devem permanecer em artefatos locais restritos.
+
+**Verificação do passo 5.8:** 17 testes focados AEC/arena passaram, incluindo
+reexecução de replay com combate, reexecução de partida truncada, isolamento de
+callables por assento, classificação de ações ilegais e estouro de budget, e
+estatísticas com vencedor oficial conhecido. Também passaram 23 testes de
+replay da engine, Ruff e mypy estrito. A suíte completa de `war_AI` teve 57
+aprovações e uma falha preexistente em
+`test_dependency_capture_returns_canonical_installed_versions`: o ambiente
+encontra duas cópias de metadados `war-game-engine` (site-packages e
+`src/war_game_engine.egg-info`); a coleta de dependências não foi alterada.
+
+**Status do passo 5.8: concluído.**
+
+**Critério de saída da fase 5: concluído.**
 
 ---
 

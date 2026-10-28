@@ -2146,6 +2146,28 @@ Estimar objetivos/cartas adversários a partir de:
 
 Comparar prior simples, partículas e modelos aprendidos. Avaliar calibração.
 
+**Implementação do passo 9.1:** criado `war_ai.rl.belief_models` com separação
+estrita entre fatos verificados (`build_player_knowledge_state` gerando
+`PlayerKnowledgeState`) e hipóteses probabilísticas (`BeliefState` validado por
+contrato), cálculo de restrições exatas das regras e do estado público/privado
+(`eligible_objective_ids_for_public_state`, `compute_feasible_objective_mask`,
+`is_objective_already_satisfied_publicly`,
+`estimate_public_hand_counts_and_card_availability`), três famílias de
+estimadores de crença (`SimpleRulePriorBeliefEstimator`,
+`SequentialParticleBeliefFilter` com reamostragem sistemática por ESS e
+rejuvenescimento MCMC, e `LearnedBeliefModelEstimator` com `OpponentBeliefHead`
+e calibração de temperatura) e avaliação de calibração (`evaluate_belief_calibration`,
+`compare_belief_estimators` com ECE, Brier score, log-loss, acurácia top-1/top-3
+e verificação de violação zero de restrições fortes).
+
+**Verificação do passo 9.1:** os testes em `test_belief_models.py`, Ruff e mypy
+passaram sem erros, confirmando violação zero de restrições fortes
+(`hard_constraint_violation_rate = 0.0`), validação round-trip dos envelopes
+`PlayerKnowledgeState` e `BeliefState`, e melhoria de log-loss dos modelos com
+histórico comportamental sobre o prior simples.
+
+**Status do passo 9.1: concluído.**
+
 ### 9.2. Implementar busca apropriada
 
 Investigar ISMCTS/POMCP adaptados:
@@ -2158,6 +2180,26 @@ Investigar ISMCTS/POMCP adaptados:
 
 Não consultar o `FullGameState` verdadeiro para planejar.
 
+**Implementação do passo 9.2:** criado `war_ai.rl.imperfect_info_search` com
+amostragem de mundos hipotéticos compatíveis com o estado público, estado
+privado próprio e crenças sobre oponentes (`sample_compatible_determinization`),
+rejeição estrutural de `FullGameState` (`PrivilegedPlanningStateError`), nós de
+conjunto informacional indexados pelo histórico observável (`InformationSetNode`,
+`ActionEdgeStats` com contadores de disponibilidade por conjunto informacional),
+nós explícitos de chance para dados de combate e compras de cartas
+(`ChanceSearchNode`), rollouts por jogador (`_run_per_player_rollout`) e
+integração com priors de política e estimativas de valor de
+`WarArchitectureModel` (`compute_action_priors_from_observation`,
+`evaluate_state_values_by_player`, `ISMCTSPOMCPPlanner`).
+
+**Verificação do passo 9.2:** os testes em `test_imperfect_info_search.py`, Ruff
+e mypy passaram sem erros, confirmando que `sample_compatible_determinization`
+preserva exatamente `PublicGameState` e `PlayerPrivateState`, que `FullGameState`
+é recusado na entrada do planejador e que `ISMCTSPOMCPPlanner` expande nós de
+conjunto informacional e nós de chance sem acesso a estado privilegiado.
+
+**Status do passo 9.2: concluído.**
+
 ### 9.3. Evitar erros de informação
 
 - Evitar *strategy fusion*: escolher ações como se diferentes segredos já fossem conhecidos.
@@ -2165,12 +2207,53 @@ Não consultar o `FullGameState` verdadeiro para planejar.
 - A política focal não sabe qual hipótese de segredo foi sorteada.
 - Determinização ingênua permanece baseline limitado, não solução automaticamente correta.
 
+**Implementação do passo 9.3:** em `war_ai.rl.imperfect_info_search`, a seleção
+na raiz de `ISMCTSPOMCPPlanner` agrega visitas e valores médios sobre todos os
+mundos amostrados no mesmo `InformationSetNode` (`strategy_fusion_free = True`),
+cada jogador simulado recebe exclusivamente `observe_player(state, acting_pid)`
+e a determinização ingênua (`algorithm = "naive_determinization"`) é mantida
+apenas como baseline limitado com `strategy_fusion_free = False`. A função
+`audit_information_safety_and_strategy_fusion` audita automaticamente a cegueira
+da política focal ao segredo verdadeiro, o isolamento das observações dos
+oponentes e a superioridade da agregação por conjunto informacional sobre a
+determinização ingênua em cenários com *strategy fusion*.
+
+**Verificação do passo 9.3:** os testes em `test_imperfect_info_search.py`, Ruff
+e mypy passaram sem erros, verificando `zero_information_leakage = True`,
+`focal_policy_blind_to_sampled_secret = True`,
+`opponent_receives_only_own_observation = True` e ganho estrito de valor
+esperado do ISMCTS sobre a determinização ingênua.
+
+**Status do passo 9.3: concluído.**
+
 ### 9.4. Integrar probabilidades exatas
 
 - Usar distribuições certificadas de combate.
 - Avaliar campanhas por programação dinâmica quando semanticamente equivalente.
 - Não substituir várias rodadas por uma macro que ignore parada, ocupação ou vitória intermediária.
 - Comparar busca agregada com execução rodada a rodada.
+
+**Implementação do passo 9.4:** criado `war_ai.rl.combat_probabilities` com o
+catálogo das 9 distribuições exatas de perdas de combate certificadas pela
+engine (`CERTIFIED_COMBAT_CATALOG`, `CertifiedCombatLossBranch`,
+`get_certified_combat_branches` usando `enumerate_combat_loss_distribution`),
+validação de equivalência semântica de campanhas (`CampaignMacroSpec`,
+`validate_campaign_macro_equivalence`, `UnsafeMacroSubstitutionError` recusando
+macros que ignorem parada opcional, ocupação obrigatória ou verificação
+intermediária de vitória), avaliação exata por programação dinâmica no DAG
+finito $(A, D)$ (`evaluate_territory_campaign_dp`, `CampaignDPStateResult`),
+expansão explícita rodada a rodada (`evaluate_round_by_round_exact_tree`),
+comparador (`compare_aggregated_dp_vs_round_by_round`) e avaliador exato de
+ações de ataque na engine (`evaluate_attack_action_with_exact_combat_distribution`).
+
+**Verificação do passo 9.4:** os testes em `test_combat_probabilities.py`, Ruff
+e mypy passaram sem erros, confirmando soma exata `Fraction(1, 1)` nas 9
+distribuições de dados, equivalência numérica exata (`max_abs_value_difference < 1e-12`)
+entre programação dinâmica e árvore explícita rodada a rodada, rejeição de
+macros inseguras e exposição do viés de macros ingênuas que ignoram parada,
+ocupação ou vitória intermediária.
+
+**Status do passo 9.4: concluído.**
 
 ### 9.5. Comparar soluções de inferência
 
@@ -2183,6 +2266,25 @@ Não consultar o `FullGameState` verdadeiro para planejar.
 
 Um portfólio não poderá escolher políticas conhecendo a identidade interna do adversário.
 
+**Implementação do passo 9.5:** criado `war_ai.rl.inference_solutions`
+comparando as seis famílias de solução de inferência (`INFERENCE_SOLUTION_FAMILIES`:
+`policy_without_search`, `policy_with_search_simple_belief`,
+`policy_with_search_learned_belief`, `increasing_search_budget`,
+`secret_blind_portfolio` e `search_distilled_policy`), curva de escalonamento
+por orçamento de simulações (`SearchBudgetScalingPoint`), portfólio cego à
+identidade interna dos adversários (`SecretBlindPolicyPortfolio`,
+`validate_portfolio_selector_inputs`, `OpponentIdentityLeakageError`) e
+destilação de busca para política rápida (`distill_search_into_policy`,
+`DistillationTrainingSummary`, `compare_inference_solutions`).
+
+**Verificação do passo 9.5:** os testes em `test_inference_solutions.py`, Ruff e
+mypy passaram sem erros, comprovando a rejeição de identidades internas dos
+oponentes ou `FullGameState` no portfólio, redução da perda de destilação com
+speedup $> 100\times$ do estudante sobre o professor de busca e avaliação
+completa das seis famílias de inferência.
+
+**Status do passo 9.5: concluído.**
+
 ### 9.6. Definir perfis de execução
 
 - Perfil rápido.
@@ -2190,6 +2292,24 @@ Um portfólio não poderá escolher políticas conhecendo a identidade interna d
 - Perfil de pesquisa, se necessário.
 
 O orçamento considerará o turno inteiro, não quantidade de tokens produzidos. Cada perfil publicado será avaliado separadamente.
+
+**Implementação do passo 9.6:** criado `war_ai.rl.execution_profiles` com os
+três perfis publicados (`FAST_EXECUTION_PROFILE`, `STRONG_EXECUTION_PROFILE`,
+`RESEARCH_EXECUTION_PROFILE` em `EXECUTION_PROFILE_CATALOG`), controlador de
+orçamento de turno inteiro (`TurnBudgetController`, `TurnBudgetState`
+contabilizando latência acumulada no turno e simulações consumidas entre todas
+as decisões de uma mesma rodada), proibição explícita de orçamento por contagem
+de tokens (`TokenCountBudgetForbiddenError`), exportação para o contrato
+`InferenceConfig` (`to_contract_inference_config`) e avaliação separada de cada
+perfil publicado (`evaluate_execution_profile`, `evaluate_all_execution_profiles`).
+
+**Verificação do passo 9.6:** os testes em `test_execution_profiles.py`, Ruff e
+mypy passaram sem erros, confirmando rejeição de perfis baseados em contagem de
+tokens, validação round-trip do contrato `InferenceConfig` para `fast`, `strong`
+e `research`, cumprimento de 100% dos orçamentos de turno inteiro e avaliação
+independente de cada perfil publicado.
+
+**Status do passo 9.6: concluído.**
 
 ### 9.7. Selecionar por evidência
 
@@ -2203,6 +2323,25 @@ Após legalidade e sigilo:
 
 Como evidência de plateau local, exigir pelo menos três ciclos independentes de pesquisa sem ganho confirmado de 2 pontos percentuais em validação. Isso **não prova ótimo global**.
 
+**Implementação do passo 9.7:** criado `war_ai.rl.evidence_selection` com os
+portões obrigatórios de legalidade e sigilo (`LegalityAndSecrecyGateError`,
+`CandidateEvidenceRecord.ensure_mandatory_gates`), ordenação lexicográfica nas
+cinco prioridades de evidência (`EVIDENCE_CRITERIA_ORDER`,
+`rank_candidates_by_evidence`) e verificador formal de plateau local
+(`MINIMUM_INDEPENDENT_PLATEAU_CYCLES = 3`,
+`CONFIRMED_VALIDATION_GAIN_THRESHOLD = 0.02`, `ResearchCycleRecord`,
+`LocalPlateauAssessment` com `proves_global_optimum = False` estritamente
+validado, `verify_local_research_plateau` e `run_phase9_evidence_selection`).
+
+**Verificação do passo 9.7:** os testes em `test_evidence_selection.py`, Ruff e
+mypy passaram sem erros, confirmando desqualificação imediata de candidatos com
+qualquer ação ilegal ou vazamento de informação, seleção do candidato final
+pela hierarquia de cinco níveis e comprovação de plateau local em $\ge 3$
+ciclos independentes sem ganho confirmado $\ge 2$ pontos percentuais, mantendo
+`proves_global_optimum = False`.
+
+**Status do passo 9.7: concluído.**
+
 ### 9.8. Congelar e exportar
 
 - Pesos e hash.
@@ -2214,7 +2353,34 @@ Como evidência de plateau local, exigir pelo menos três ciclos independentes d
 - Testes de paridade.
 - Model card.
 
+**Implementação do passo 9.8:** criado `war_ai.rl.final_candidate_export` com o
+pacote imutável do candidato final (`FrozenFinalCandidateBundle`,
+`freeze_and_export_final_candidate`), remoção de pesos privilegiados de treino e
+verificação criptográfica SHA-256 (`verify_frozen_candidate_integrity`,
+`CorruptedCandidateArtifactError`), especificações congeladas de
+encoder/decoder (`EncoderDecoderExportSpec`) e estado recorrente isolado por
+assento (`RecurrentStateExportSpec`), configuração de amostragem e contratos
+`PolicyManifest` e `InferenceConfig` para os perfis `fast`, `strong` e
+`research`, verificação de compatibilidade de regras
+(`verify_candidate_rules_compatibility`, `IncompatibleCandidateRulesetError`),
+bateria de testes de paridade (`run_candidate_parity_tests`,
+`ParityVerificationReport`), geração do Model Card (`CandidateModelCard`,
+`render_model_card_markdown`) e campanha reprodutível persistida em
+[`phase-9.8-final-candidate-2026-10-28.json`](../lib/war_AI/benchmarks/phase-9.8-final-candidate-2026-10-28.json).
+
+**Verificação do passo 9.8:** os testes em `test_final_candidate_export.py`,
+Ruff e mypy passaram sem erros, confirmando paridade bit a bit
+(`logits_max_abs_diff = 0.0`, `values_max_abs_diff = 0.0`,
+`belief_logits_max_abs_diff = 0.0`, `action_selection_parity = True`),
+isolamento de estado recorrente por jogador, rejeição de pesos adulterados ou
+regras incompatíveis e validação round-trip dos contratos `PolicyManifest` e
+`InferenceConfig`.
+
+**Status do passo 9.8: concluído.**
+
 **Critério de saída:** candidato reproduzível e congelado antes de revelar os testes finais.
+
+**Critério de saída da fase 9: concluído.**
 
 ---
 

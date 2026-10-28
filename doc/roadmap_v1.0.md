@@ -1947,6 +1947,27 @@ Manter:
 - Agentes de exploração de fraquezas.
 - Modelos independentes de generalização.
 
+**Implementação do passo 8.1:** criado `war_ai.rl.league_population` com os seis
+papéis formais da liga (`POPULATION_ROLES`: `main_agent`, `historical_snapshot`,
+`architecture_seed_leader`, `mission_style_specialist`, `weakness_exploiter` e
+`independent_generalization_model`), descritor imutável de membro com digest
+SHA-256 obrigatório e impressão digital paramétrica (`LeaguePopulationMember`),
+registro e governança da população (`LeaguePopulation`,
+`PopulationCompletenessReport`), promoção de agentes principais com
+arquivamento automático em snapshots históricos (`promote_main_agent`),
+atualização de líderes por `(architecture_id, seed)` (`upsert_architecture_seed_leader`),
+isolamento estrito de linhagens entre modelos de treino e modelos retidos para
+generalização (`trainable_opponent_pool`, `held_out_generalization_pool`) e
+construtor reprodutível da população padrão (`build_default_league_population`).
+
+**Verificação do passo 8.1:** 3 testes em `test_league_population` passaram,
+cobrindo a presença dos 6 papéis, isolamento de linhagens de generalização,
+promoção de agentes principais, substituição seletiva de líderes por
+arquitetura/seed, rejeição de checkpoints duplicados e execução de partida
+completa na arena; Ruff e mypy passaram sem erros.
+
+**Status do passo 8.1: concluído.**
+
 ### 8.2. Treinar contra mesas completas
 
 - Amostrar lineups de vários jogadores.
@@ -1954,6 +1975,26 @@ Manter:
 - Registrar probabilidades de amostragem.
 - Preservar diversidade.
 - Não reduzir WAR a uma coleção de duelos.
+
+**Implementação do passo 8.2:** criado `war_ai.rl.full_table_training` com a
+configuração de amostragem de mesas completas (`FullTableSamplingConfig`),
+rejeição explícita de duelos de 2 jogadores (exigindo sempre $3..6$ jogadores),
+amostrador priorizado (`PrioritizedFullTableSampler`) que combina distribuição
+uniforme sobre o histórico com peso priorizado para confrontos difíceis
+(`OpponentDifficultyRecord`), piso mínimo de probabilidade e bônus de
+diversidade de estilo e linhagem, registro exato das probabilidades de
+amostragem por candidato, assento e lineup conjunto (`SampledTableLineup`),
+auditoria de entropia de Shannon e suporte efetivo (`LineupDiversityReport`,
+`evaluate_lineup_diversity`) e campanha de treinamento em mesas completas
+(`run_full_table_training_campaign`).
+
+**Verificação do passo 8.2:** 3 testes em `test_full_table_training` passaram,
+cobrindo rejeição de duelos `2p`, cobertura das mesas `3p..6p`, soma unitária e
+registro das probabilidades de amostragem, deslocamento de massa para
+adversários difíceis preservando piso mínimo para adversários fáceis e execução
+completa de campanha; Ruff e mypy passaram sem erros.
+
+**Status do passo 8.2: concluído.**
 
 ### 8.3. Explorar PSRO e metajogo empírico
 
@@ -1964,6 +2005,28 @@ Manter:
 
 Elo pairwise sozinho não representará toda a força multiplayer.
 
+**Implementação do passo 8.3:** criado `war_ai.rl.psro_metagame` com a tabela de
+metajogo empírico por lineup canônico (`LineupPayoffRecord`,
+`EmpiricalMetagameTable`, `canonical_lineup_key`), avaliação de metaestratégias
+e regret (`MetaStrategyProfile`, `nash_conv_regret`, `regret_by_policy`),
+solucionadores multiplayer via dinâmica do replicador
+(`solve_replicator_meta_strategy`) e $\alpha$-Rank em população finita
+(`solve_alpharank_meta_strategy`), comparação explícita entre ranking
+multiplayer composto e Elo pairwise (`MetagameRankingEntry`,
+`compute_rankings`, `elo_alone_insufficient`), detector de 3-ciclos
+intransitivos $A \succ B \succ C \succ A$ (`DominanceCycle`,
+`detect_intransitive_cycles`) e treinamento de oráculo PSRO de melhor resposta
+contra misturas de políticas (`PSROOracleResult`,
+`train_oracle_against_policy_mixture`, `run_psro_metagame_exploration`).
+
+**Verificação do passo 8.3:** 3 testes em `test_psro_metagame` passaram,
+cobrindo o registro de payoffs por lineup, detecção de ciclos pedra-papel-tesoura,
+redução de regret pela dinâmica do replicador e $\alpha$-Rank frente à mistura
+uniforme, insuficiência do Elo pairwise isolado e treinamento de oráculo PSRO;
+Ruff e mypy passaram sem erros.
+
+**Status do passo 8.3: concluído.**
+
 ### 8.4. Treinar melhores respostas
 
 - Pelo menos três abordagens independentes.
@@ -1971,6 +2034,27 @@ Elo pairwise sozinho não representará toda a força multiplayer.
 - Cada explorador maximiza sua própria vitória.
 - Nenhum compartilhamento de segredos ou política de equipe escondida.
 - Colusões deliberadas poderão ser stress tests separados, não a banca normal.
+
+**Implementação do passo 8.4:** criado `war_ai.rl.best_response` com pelo menos
+três abordagens independentes de melhor resposta (`MINIMUM_EXPLOITER_APPROACHES = 3`,
+`ppo_recurrent_exploiter`, `r2d2_dueling_exploiter`, `graph_search_exploiter`,
+`impala_vtrace_exploiter`), treinamento e avaliação em múltiplas sementes por
+abordagem (`ExploiterTrainingConfig`, `BestResponseSeedResult`,
+`ExploiterApproachReport`), contrato estrito de maximização individual de
+vitória oficial (`reward_objective == "solo_official_victory"`) sem
+compartilhamento de segredos ou coordenação oculta de equipe, auditoria de
+isolamento de instâncias por assento e invariância a segredos adversários
+(`ExploiterIsolationAudit`, `verify_exploiter_isolation`) e suíte separada de
+stress test de colusão explicitamente bloqueada de ingressar na banca normal
+(`CollusionStressTestScenario`, `CollusionStressTestReport`,
+`run_collusion_stress_test`, `run_best_response_campaign`).
+
+**Verificação do passo 8.4:** 3 testes em `test_best_response` passaram,
+cobrindo as guardas contra objetivo de equipe/kingmaking, compartilhamento de
+segredos e colusão na banca normal, além da campanha com 3 abordagens
+independentes em múltiplas sementes; Ruff e mypy passaram sem erros.
+
+**Status do passo 8.4: concluído.**
 
 ### 8.5. Medir generalização
 
@@ -1980,6 +2064,28 @@ Elo pairwise sozinho não representará toda a força multiplayer.
 - Regressão contra históricos.
 - Fraquezas por missão.
 - Adaptação indevida a cores ou assentos.
+
+**Implementação do passo 8.5:** criado `war_ai.rl.generalization` com avaliação
+de cross-play entre sementes e arquiteturas (`CrossPlayCell`,
+`CrossPlayMatrixReport`, `evaluate_cross_play`), medição contra modelos
+independentes retidos fora do treinamento (`HeldOutGeneralizationEntry`,
+`HeldOutGeneralizationReport`, `evaluate_held_out_generalization`),
+identificação do pior adversário individual e pior lineup completo
+(`WorstCaseVulnerabilityReport`, `identify_worst_opponent_and_lineup`),
+auditoria de não regressão contra snapshots históricos
+(`HistoricalRegressionEntry`, `HistoricalRegressionReport`,
+`evaluate_historical_regression`), estratificação de desempenho e fraquezas por
+missão e categoria de objetivo (`MissionStratumStat`, `MissionWeaknessReport`,
+`evaluate_mission_weaknesses`), auditoria de adaptação indevida a assentos e
+cores oficiais (`SeatColorStratumStat`, `SeatColorBiasAudit`,
+`audit_seat_and_color_adaptation`) e relatório consolidado
+(`GeneralizationEvaluationReport`, `run_generalization_evaluation`).
+
+**Verificação do passo 8.5:** 2 testes em `test_generalization` passaram,
+cobrindo todas as 6 dimensões de generalização e auditoria de viés de
+assento/cor; Ruff e mypy passaram sem erros.
+
+**Status do passo 8.5: concluído.**
 
 ### 8.6. Formar banca congelada
 
@@ -1992,7 +2098,38 @@ Proposta rigorosa:
 - Não preencher o banco com agentes aleatórios ou versões intencionalmente fracas.
 - Não contar muitos checkpoints quase idênticos como diversidade suficiente.
 
+**Implementação do passo 8.6:** criado `war_ai.rl.frozen_benchmark_panel` com os
+critérios formais da banca congelada (`FrozenBenchmarkPanelConfig`,
+`MINIMUM_BENCHMARK_PANEL_POLICIES = 8`, `MINIMUM_BENCHMARK_APPROACHES = 3`),
+rejeição explícita de políticas aleatórias ou fracas
+(`WeakOrRandomPanelPolicyError`, `FORBIDDEN_WEAK_OR_RANDOM_TOKENS`, piso de
+`validation_score` e `generation >= 1`), rejeição de checkpoints quase idênticos
+ou excesso de membros da mesma linhagem (`NearDuplicateCheckpointError`,
+`fingerprint_l2_distance`, `max_members_per_lineage = 1`), montagem e validação
+da banca congelada (`FrozenBenchmarkPanel`, `FrozenPanelValidationReport`,
+`validate_and_create_frozen_panel`, `assemble_frozen_benchmark_panel`),
+construtores de cenários homogêneos e mistos sem reposição
+(`build_homogeneous_scenario_configs`, `build_mixed_scenario_configs`) e
+executor completo da campanha da Fase 8 (`run_phase8_league_campaign`, CLI
+`python -m war_ai.rl.frozen_benchmark_panel`).
+
+**Verificação do passo 8.6:** a campanha completa da Fase 8 foi executada e
+persistida em
+[`phase-8.6-league-panel-2026-10-28.json`](../lib/war_AI/benchmarks/phase-8.6-league-panel-2026-10-28.json).
+A banca congelada reuniu `12` políticas distintas ($\ge 8$), `12` linhagens
+distintas (`max_members_per_lineage = 1`), `10` abordagens bem-sucedidas
+distintas ($\ge 3$), distância L2 mínima entre impressões digitais paramétricas
+de `0,023913 >= 0,005`, `min_validation_score_observed = 0,8692 >= 0,75`,
+incluindo líderes por arquitetura/seed, adversários independentes retidos fora
+do treino, exploradores de melhor resposta e especialistas por missão/estilo,
+com zero agentes aleatórios/fracos e zero checkpoints quase idênticos. Os
+testes em `test_frozen_benchmark_panel`, Ruff e mypy passaram sem erros.
+
+**Status do passo 8.6: concluído.**
+
 **Critério de saída:** população reproduzível, banca forte e avaliação empírica de vulnerabilidades.
+
+**Critério de saída da fase 8: concluído.**
 
 ---
 

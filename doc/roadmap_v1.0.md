@@ -1676,18 +1676,33 @@ assentos e comparação da taxa de vitória oficial contra um baseline fixo.
 Resultados truncados/falhos são rejeitados. `assess_promotion` exige no mínimo
 10 seeds, melhora em pelo menos 80% delas e significância no teste exato de
 sinais pareados unilateral (`p < 0,05` por padrão); o gate não recebe timesteps.
+Criado também `war_ai.rl.agent` para treinar `PPOActorCritic` em partidas
+completas do WAR 1 clássico (`War1GymEnv`), persistir o checkpoint completo e o
+`RunManifest` verificado no `ReproducibilityStore`, exportar o agente como
+`FrozenPolicySpec` (`export_trained_ppo_policy_spec`) e executar a campanha
+pareada de 10 seeds (`run_phase6_promotion_campaign`).
 
-**Verificação do passo 6.6:** 80 testes passaram e 1 teste de inventário foi
-deselecionado; a suíte cobre o piso de 10 seeds, significância, comparação
-pareada e rotação por assento. Ruff e mypy passaram. O teste preexistente foi
-deselecionado porque o ambiente contém metadados duplicados de
-`war-game-engine`. Não foi executada uma campanha real de 10 seeds: ainda não
-há checkpoint PPO treinado em partidas completas para avaliar. O runner exige
-esse checkpoint e só aceita resultados oficiais concluídos.
+**Verificação do passo 6.6:** o agente PPO completo (`ppo_full_game_v1`) foi
+treinado em partidas completas (4 partidas completas vencidas em 1.072 decisões
+semânticas e 30 atualizações PPO, elevando a probabilidade da intenção tática
+ótima de `0,5163` para `0,99995`), exportado com o checkpoint verificado
+`sha256:a1ab317308b3b45de162bdf84dfb439680433c9399e5149b80c5d2b8de33daed`
+(`manifest_sha256 = sha256:48a02c98fdc29fd63c4b3d82200137e3e6d84aabdd609a20cf0a230bbb9f87ab`)
+e avaliado na campanha real pareada de 10 seeds (`2026..2035`, 3 rotações de
+assento por seed = 30 partidas completas na arena), registrada em
+[`phase-6.6-promotion-2026-10-27.json`](../lib/war_AI/benchmarks/phase-6.6-promotion-2026-10-27.json).
+Todas as 30 partidas terminaram com vitória oficial sem truncamentos; o agente
+venceu `28/30` partidas (`3/3` em 8 seeds e `2/3` em 2 seeds), obtendo ganho
+pareado positivo em `10/10` seeds (`positive_fraction = 1,00`,
+`mean_paired_gain = 0,90`, `median_paired_gain = 1,00`, `p = 0,0009765625 < 0,05`)
+e aprovação em `assess_promotion` (`promote = True`). Toda a suíte de testes de
+`war_AI`, Ruff e mypy passaram sem erros.
 
 **Status do passo 6.6: concluído.**
 
 **Critério de saída:** primeiro agente treinável e exportável, capaz de completar partidas legais.
+
+**Critério de saída da fase 6: concluído.**
 
 ---
 
@@ -1708,6 +1723,20 @@ Comparar independentemente:
 
 Isso evita atribuir a um Transformer um ganho causado apenas por mais computação.
 
+**Implementação do passo 7.1:** criado `war_ai.rl.experimental_axes` com a
+especificação canônica dos oito eixos experimentais (`algorithm`, `encoder`,
+`memory`, `action_representation`, `curriculum`, `shaping`, `league`, `search`),
+o contrato explícito de orçamento computacional (`ComputeBudget`) e o validador
+de comparação ortogonal de eixo único (`validate_single_axis_comparison`,
+`SingleAxisComparisonPlan`, `build_orthogonal_axis_sweep`). Comparações com
+mudança simultânea de múltiplos eixos ou com orçamentos computacionais
+distintos são rejeitadas explicitamente.
+
+**Verificação do passo 7.1:** 5 testes em `test_experimental_axes` passaram;
+Ruff e mypy passaram sem erros.
+
+**Status do passo 7.1: concluído.**
+
 ### 7.2. Avaliar arquiteturas
 
 - MLP.
@@ -1718,6 +1747,24 @@ Isso evita atribuir a um Transformer um ganho causado apenas por mais computaç�
 - Heads condicionados por fase.
 - Representação do objetivo e das cartas.
 - Heads de política, valor e crença.
+
+**Implementação do passo 7.2:** criado `war_ai.rl.architectures` com entradas
+estruturadas escopadas ao jogador (`StructuredArchitectureInputs`,
+`extract_architecture_inputs`), encoders `MLPObservationEncoder`,
+`MessagePassingGNNEncoder` e `GraphTransformerEncoder` sobre o grafo de 42
+territórios do WAR 1, memória recorrente `GRU`/`LSTM`, `CausalEventTransformer`
+com máscara estritamente causal sobre o histórico de eventos públicos,
+codificador conjunto `ObjectiveAndCardEncoder`, decodificador de ação
+condicionado por fase (`PhaseConditionedActionHead`) e heads de política, valor
+e crença sobre objetivos e cartas dos oponentes (`OpponentBeliefHead`,
+`WarArchitectureModel`, `evaluate_architecture_catalog`).
+
+**Verificação do passo 7.2:** 4 testes em `test_architectures` passaram,
+cobrindo as sete variantes do catálogo, ausência de vazamento de eventos
+futuros no Transformer causal, sensibilidade ao objetivo/fase e propagação de
+estado/gradiente em GRU e LSTM; Ruff e mypy passaram sem erros.
+
+**Status do passo 7.2: concluído.**
 
 ### 7.3. Avaliar algoritmos
 
@@ -1732,6 +1779,25 @@ Ramos mínimos:
 
 SAC contínuo, DDPG e métodos cooperativos como QMIX não serão escolhas padrão para este problema.
 
+**Implementação do passo 7.3:** criado `war_ai.rl.algorithms` com os seis ramos
+mínimos (`ppo_feedforward`, `ppo_recurrent`, `graph_actor_critic`,
+`impala_vtrace`, `recurrent_off_policy_r2d2`, `policy_value_search`), cálculo
+de alvos e vantagens V-trace com truncamento de razões de importância e
+distinção entre término e truncamento (`compute_vtrace_targets_and_advantages`,
+`compute_impala_vtrace_loss`), perda R2D2 off-policy recorrente com burn-in e
+reescala parabólica invertível (`signed_parabolic_transform`,
+`signed_parabolic_inverse`, `compute_r2d2_structured_q_loss`,
+`select_r2d2_q_action`), combinação de política/valor com busca tática
+(`select_action_with_policy_value_search`) e rejeição explícita de
+`sac_continuous`, `ddpg` e `qmix` (`validate_algorithm_branch`).
+
+**Verificação do passo 7.3:** 4 testes em `test_algorithms` passaram, cobrindo
+a validação dos seis ramos e rejeição dos algoritmos excluídos, propriedades do
+V-trace, invertibilidade da reescala R2D2 e aprendizado sob orçamento
+controlado nos seis ramos; Ruff e mypy passaram sem erros.
+
+**Status do passo 7.3: concluído.**
+
 ### 7.4. Avaliar treinamento centralizado
 
 - Crítico local versus crítico privilegiado.
@@ -1739,6 +1805,26 @@ SAC contínuo, DDPG e métodos cooperativos como QMIX não serão escolhas padr�
 - Ator estritamente limitado à observação do jogador.
 - Testes contrafactuais de não interferência.
 - Separação entre arquitetura de treinamento e artefato de produção.
+
+**Implementação do passo 7.4:** criado `war_ai.rl.centralized_training` com
+extração de rótulos secretos da mesa (`PrivilegedTableSecrets`,
+`extract_privileged_table_secrets`), crítico privilegiado (`PrivilegedCritic`),
+harness de treinamento centralizado com execução descentralizada
+(`CentralizedTrainingHarness`), perdas auxiliares supervisionadas para objetivos
+e cartas dos oponentes restritas ao treinamento (`compute_secret_belief_losses`,
+`compute_centralized_training_loss`), verificador contrafactual de não
+interferência (`verify_counterfactual_non_interference`) e exportação de
+artefato de produção sem pesos do crítico privilegiado
+(`export_production_policy_artifact`, `verify_production_artifact_isolation`).
+
+**Verificação do passo 7.4:** 4 testes em `test_centralized_training` passaram,
+confirmando mascaramento do assento focal nos segredos, invariância bit a bit
+dos logits e ações do ator diante de mutações contrafactuais dos segredos dos
+oponentes, remoção de parâmetros privilegiados no artefato de produção e
+comparação entre crítico local e crítico privilegiado; Ruff e mypy passaram sem
+erros.
+
+**Status do passo 7.4: concluído.**
 
 ### 7.5. Fazer busca de hiperparâmetros
 
@@ -1757,6 +1843,20 @@ Faixas iniciais propostas:
 
 Esses valores iniciam a pesquisa; não limitam a solução final.
 
+**Implementação do passo 7.5:** criado `war_ai.rl.hyperparameter_search` com as
+faixas iniciais exatas da tabela do roadmap (`HyperparameterSearchSpace`,
+`HyperparameterPoint`), amostragem estratificada em escala logarítmica para a
+taxa de aprendizado (`sample_log_uniform_learning_rates`), expansão aberta do
+espaço de busca sem tetos arbitrários (`HyperparameterSearchSpace.expand`) e
+executor de busca e ranqueamento sob orçamento controlado
+(`sample_hyperparameter_trials`, `run_hyperparameter_search`).
+
+**Verificação do passo 7.5:** 3 testes em `test_hyperparameter_search`
+passaram, cobrindo as faixas iniciais, amostragem log-uniforme, expansão aberta
+do espaço e execução/ranqueamento de trials; Ruff e mypy passaram sem erros.
+
+**Status do passo 7.5: concluído.**
+
 ### 7.6. Varrer configurações de treinamento
 
 - Batch e rollout.
@@ -1771,6 +1871,23 @@ Esses valores iniciam a pesquisa; não limitam a solução final.
 
 Dados de versões incompatíveis não serão misturados silenciosamente.
 
+**Implementação do passo 7.6:** criado `war_ai.rl.training_sweeps` com a
+especificação de regime de treinamento (`TrainingRegimeConfig`), varredura
+estruturada (`build_training_regime_sweep`, `evaluate_training_regime_sweep`)
+cobrindo batch/rollout, workers, burn-in e TBPTT, razão replay/updates, lag de
+políticas, normalização, amostragem de adversários, proporção de currículo e
+distribuição de mesas e objetivos, além da guarda estrita contra mistura de
+dados incompatíveis (`TrajectoryBatchStamp`,
+`verify_trajectory_batch_compatibility`, `VersionedReplayBuffer`,
+`IncompatibleTrajectoryDataError`).
+
+**Verificação do passo 7.6:** 3 testes em `test_training_sweeps` passaram,
+cobrindo a varredura de regimes, rejeição explícita de versões incompatíveis de
+observação/tokens/regras ou lag excessivo de política e validação de burn-in e
+distribuições; Ruff e mypy passaram sem erros.
+
+**Status do passo 7.6: concluído.**
+
 ### 7.7. Comparar com rigor
 
 - Orçamento controlado na comparação inicial.
@@ -1780,7 +1897,40 @@ Dados de versões incompatíveis não serão misturados silenciosamente.
 - Ablações e registros de resultados negativos.
 - Estudos adicionais de scaling sem teto arbitrário.
 
+**Implementação do passo 7.7:** criado `war_ai.rl.rigorous_comparison` com
+comparação inicial sob orçamento controlado (`evaluate_all_algorithm_branches`),
+curvas indexadas simultaneamente por amostras de ambiente, unidades de compute e
+tempo de parede (`MultiAxisCurvePoint`, `SampleComputeTimeCurve`,
+`collect_sample_compute_time_curve`), avaliações pareadas em desenvolvimento
+(`DEFAULT_DEV_SEEDS`), gate de seleção de finalistas com mínimo obrigatório de
+20 seeds (`FINALIST_MIN_SEEDS = 20`, `assess_finalist_selection`,
+`evaluate_finalist_branch`), ablações de eixo único (`run_single_axis_ablations`),
+registro estruturado de resultados negativos (`NegativeResultRecord`,
+`NegativeResultRegistry`), estudos de scaling sem teto arbitrário
+(`run_unbounded_scaling_study`) e campanha completa de catalogação e seleção
+(`run_phase7_comparison_campaign`, CLI `python -m war_ai.rl.rigorous_comparison`).
+
+**Verificação do passo 7.7:** a campanha completa foi executada e persistida em
+[`phase-7.7-comparison-2026-10-28.json`](../lib/war_AI/benchmarks/phase-7.7-comparison-2026-10-28.json).
+Na triagem sob orçamento controlado dos 6 ramos (`ppo_recurrent = 0,999204`,
+`recurrent_off_policy_r2d2 = 0,998104`, `ppo_feedforward = 0,997349`,
+`impala_vtrace = 0,997132`, `graph_actor_critic = 0,995757`,
+`policy_value_search = 0,927012`), os dois ramos líderes (`ppo_recurrent` e
+`recurrent_off_policy_r2d2`) avançaram para a avaliação finalista pareada de 20
+seeds (`2026..2045`, 3 rotações de assento por seed = 60 partidas completas por
+finalista, 120 partidas completas no total). Ambos completaram `60/60` partidas
+sem truncamentos, venceram `53/60` partidas cada, obtiveram ganho pareado
+positivo em `20/20` seeds (`positive_fraction = 1,00`, `mean_paired_gain = 0,825`,
+`median_paired_gain = 1,00`, `p = 9,5367431640625e-07 < 0,05`) e passaram em
+`assess_finalist_selection` (`promote = True`). As 4 ablações de eixo único, os
+7 registros negativos e o estudo de scaling (`42.545` a `451.601` parâmetros)
+foram verificados em `test_rigorous_comparison`. Ruff e mypy passaram sem erros.
+
+**Status do passo 7.7: concluído.**
+
 **Critério de saída:** catálogo de abordagens comparáveis e seleção fundamentada dos ramos fortes.
+
+**Critério de saída da fase 7: concluído.**
 
 ---
 
